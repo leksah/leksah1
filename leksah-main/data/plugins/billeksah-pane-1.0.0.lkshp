@@ -1,0 +1,10 @@
+Name of the plugin:
+               "billeksah-pane"
+Version:       1.0.0
+Module:        "Graphics.Frame"
+Interface:     "panePluginInterface"
+Prerequisite list:
+               [(billeksah-forms,1.0.0,1.2)]
+     --Plugin root pathes in the form ["p1","p2"]
+Synopsis:      ""
+     --or call it comment

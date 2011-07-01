@@ -1,0 +1,10 @@
+Name of the plugin:
+               "leksah-dummy"
+Version:       1.0
+Module:        "Leksah.Dummy"
+Interface:     "dummyPluginInterface"
+Prerequisite list:
+               [(billeksah-pane,1,1.1),(leksah-main,1,1.1)]
+     --Plugin root pathes in the form ["p1","p2"]
+Synopsis:      ""
+     --or call it comment

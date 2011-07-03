@@ -17,8 +17,8 @@ module Panes.Plugin where
 
 import Base
 import Graphics.Pane
-import Graphics.Forms
 import Leksah
+import Graphics.Forms
 
 import Graphics.UI.Gtk
 import Data.Typeable (cast, Typeable)
@@ -32,6 +32,7 @@ import System.FilePath ((<.>), (</>), dropFileName)
 import Data.List (nubBy)
 import Text.Parsec (parse)
 import Control.Monad (when, liftM)
+
 
 -- -----------------------------------------------
 -- * Events the gui frame triggers
@@ -79,7 +80,7 @@ openPluginPane :: Prerequisite -> StateM ()
 openPluginPane (name,bounds) = do
     currentConfigPath <- liftM dropFileName getCurrentConfigPath
     res               <- liftIO $ loadPluginDescription currentConfigPath (name,bounds)
-    choices           <- liftIO $ getChoices (dropFileName currentConfigPath)
+    choices           <- liftIO $ getPrereqChoices (dropFileName currentConfigPath)
     let choices' = filter (\ (n,_) -> n /= name) choices
     case res of
         Right errorStr  ->  liftIO $ putStrLn ("Can't find plugin: " ++ errorStr)
@@ -94,7 +95,7 @@ openPluginPane (name,bounds) = do
 openPluginPane' :: Plugin -> StateM ()
 openPluginPane' plugin = do
     currentConfigPath <- liftM dropFileName getCurrentConfigPath
-    choices           <- liftIO $ getChoices (dropFileName currentConfigPath)
+    choices           <- liftIO $ getPrereqChoices (dropFileName currentConfigPath)
     let choices' = filter (\ (n,_) -> n /= (plName plugin)) choices
     pane :: Maybe PluginPane <- getAndDisplayPane (Left []) True
     case pane of
@@ -153,7 +154,6 @@ pluginDescr = VFD emptyParams [
             (\ b a -> a{plSynopsis = b})
             multilineStringEditor]
 
-
 prerequisitesEditor mbDeleteHandler =
     selectionEditor
         (ColumnDescr True
@@ -175,47 +175,33 @@ prerequisitesEditor mbDeleteHandler =
     showMbVersion Nothing        = "any"
     showMbVersion (Just version) = showVersion version
 
-
 -- ----------------------------------------------
 -- * Building the forms pane in standard form
 --
 
 buildPluginPane :: PanePath -> Notebook -> Window -> StateM (Maybe PluginPane, Connections)
-buildPluginPane = \ pp nb w -> do
-    initialValue <-  makeValue
-    (buildFormsPane pluginDescr initialValue formPaneDescr) pp nb w
+buildPluginPane = \ pp nb w -> makeValue >>= \ initial ->
+                    (buildFormsPane pluginDescr initial formPaneDescr) pp nb w
+
   where
+
     makeValue = do
         currentConfigPath   <- getCurrentConfigPath
-        let plugin          =  defaultPlugin
-        choices             <- liftIO $ getChoices (dropFileName currentConfigPath)
-        return plugin{plChoices = choices}
+        choices             <- liftIO $ getPrereqChoices (dropFileName currentConfigPath)
+        return defaultPlugin{plChoices = choices}
+
     formPaneDescr :: FormPaneDescr Plugin PluginPane PluginPaneState = FormPaneDescr {
         fpGetPane     = \ top inj ext -> PluginPane top inj ext,
-        fpSaveAction  = \ v -> do
-            currentConfigPath <- getCurrentConfigPath
-            liftIO $ writePluginDescr (dropFileName currentConfigPath
-                                </> getPluginName v <.> ".lkshp") v
-            triggerPluginPane PluginDescrChanged
-            return (),
+        fpSaveAction  = \ v ->  do
+                                    currentConfigPath <- getCurrentConfigPath
+                                    liftIO $ writePluginDescr (dropFileName currentConfigPath
+                                                        </> getPluginName v <.> ".lkshp") v
+                                    triggerPluginPane PluginDescrChanged
+                                    return (),
         fpEqual = \ v1 v2 -> v1{plChoices = []} == v2{plChoices = []},
         fpGuiHandlers = [],
         fpExtraButtons = []}
 
-getChoices :: FilePath -> IO [Prerequisite]
-getChoices currentConfigPath= do
-    possiblePlugins     <-  allKnownPlugins (dropFileName currentConfigPath)
-    let possibleBounds  =   map getStandardBounds possiblePlugins
-    let possibleChoices =   nubBy (\e1 e2 -> fst e1 == fst e2) $
-                                [ e | e@(n,_) <- possibleBounds]
-    return possibleChoices
 
-getStandardBounds :: Plugin -> Prerequisite
-getStandardBounds Plugin{plName = name, plVersion = version} =
-    (name,(Just version,Just (nextVersion version)))
-  where
-    nextVersion (Version (a:b:_) []) = Version [a,b+1] []
-    nextVersion (Version [a] [])     = Version [a,1] []
-    nextVersion (Version [] [])      = Version [1,1] []
 
 

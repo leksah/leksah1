@@ -86,7 +86,7 @@ registerRefresh pane = registerPluginPaneEvent (\e -> trace "PluginChanged1" $
                 Nothing -> return e
                 Just v -> do
                     currentConfigPath   <- getCurrentConfigPath
-                    prerequisites       <- liftIO $ getChoices currentConfigPath
+                    prerequisites       <- liftIO $ getPrereqChoices currentConfigPath
                     let pluginConfig'   =  v{cfChoices = prerequisites
                                                                 ++ cfPlugins v}
                     (pcpInj pane) pluginConfig'
@@ -195,7 +195,7 @@ buildPluginConfigPane = \ pp nb w -> do
     makeValue = do
         currentConfigPath   <- getCurrentConfigPath
         pluginConfig        <- liftIO $ loadPluginConfig currentConfigPath
-        prerequisites       <- liftIO $ getChoices currentConfigPath
+        prerequisites       <- liftIO $ getPrereqChoices currentConfigPath
         return $ pluginConfig{cfChoices = prerequisites ++ cfPlugins pluginConfig}
     formPaneDescr :: FormPaneDescr PluginConfig PluginConfigPane PluginConfigPaneState =
         FormPaneDescr {

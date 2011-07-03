@@ -1,7 +1,7 @@
 Name of the plugin:
                "billeksah-pane"
 Version:       1.0.0
-Module:        "Graphics.Frame"
+Module:        "Graphics.Pane"
 Interface:     "panePluginInterface"
 Prerequisite list:
                [(billeksah-forms,1.0.0,1.2)]

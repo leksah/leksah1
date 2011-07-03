@@ -26,6 +26,7 @@ import Base.PluginTypes
 import Base.State
 import Graphics.Frame
 import Graphics.Panes
+import Graphics.Pane(startupFrame)
 
 import Data.Version (Version(..))
 import Data.IORef (newIORef, IORef)
@@ -74,11 +75,7 @@ data LeksahPrefs = LeksahPrefs
 
 leksahInit1 :: BaseEvent -> PEvent LeksahEvent -> StateM ()
 leksahInit1 baseEvent myEvent = trace ("init1 " ++ pluginName) $ do
-    uiManager <- liftIO $ do
-        unsafeInitGUIForThreadedRTS
-        timeoutAddFull (yield >> return True) priorityDefaultIdle 100 -- maybe switch back to
-        uiManagerNew
-    registerState (pluginName ++ "." ++ "uiManager") uiManager
+
     return ()
 
 leksahInit2 :: BaseEvent -> PEvent LeksahEvent -> StateM ()
@@ -94,9 +91,10 @@ leksahInit2 baseEvent myEvent = trace ("init2 " ++ pluginName) $ do
 --
 
 startupLeksah :: StateAction
-startupLeksah = startupFrame "Leksah main" openDummy
+startupLeksah = startupFrame "Leksah main" beforeMainGUI
 
-openDummy = postAsyncState (triggerLeksahEvent Started >> return ())
+beforeMainGUI win vb nb = do
+    postAsyncState (triggerLeksahEvent Started >> return ())
 
 
 

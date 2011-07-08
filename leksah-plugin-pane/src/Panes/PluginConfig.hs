@@ -62,10 +62,16 @@ init1 baseEvent myEvent = trace ("init1 " ++ pluginName) $ return ()
 
 init2 :: BaseEvent -> PEvent PluginPaneEvent -> StateM ()
 init2 baseEvent myEvent = trace ("init2 " ++ pluginName) $ do
-    registerLeksahEvent (\ e -> case e of
-                                Started -> openPluginConfigPane >> return e)
+    registerFrameEvent (\ e -> case e of
+                                RegisterActions actions ->
+                                    return $ RegisterActions $ actions ++ myActions
+                                otherwise -> return e)
     return ()
 
+myActions :: [ActionDescr]
+myActions =
+    [AD "PluginConfig" "PluginConfig" Nothing Nothing openPluginConfigPane Nothing ActionNormal
+        (MPLast ["Panes"] False) TPNo []]
 
 openPluginConfigPane :: StateM ()
 openPluginConfigPane = do

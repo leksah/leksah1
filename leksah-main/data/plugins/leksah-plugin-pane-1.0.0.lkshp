@@ -4,7 +4,7 @@ Version:       1.0.0
 Module:        "Panes.PluginConfig"
 Interface:     "pluginPanePluginInterface"
 Prerequisite list:
-               [(billeksah-forms,any,any),(billeksah-pane,any,any),(leksah-main,any,any)]
+               [(billeksah-forms,any,any),(billeksah-pane,any,any)]
      --Plugin root pathes in the form ["p1","p2"]
 Synopsis:      ""
      --or call it comment

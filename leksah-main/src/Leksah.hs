@@ -1,4 +1,4 @@
-{-# Language DeriveDataTypeable, StandaloneDeriving #-}
+{-# Language DeriveDataTypeable, StandaloneDeriving, ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Leksah
@@ -24,11 +24,9 @@ module Leksah (
 import Base.Event
 import Base.PluginTypes
 import Base.State
-import Graphics.Frame
-import Graphics.Panes
-import Graphics.Pane(startupFrame)
+import Graphics.Pane
 
-import Data.Version (Version(..))
+import Data.Version (showVersion, Version(..))
 import Data.IORef (newIORef, IORef)
 import Control.Monad.Reader (ReaderT(..))
 import qualified Data.Map as Map (empty)
@@ -38,6 +36,10 @@ import Debug.Trace (trace)
 import Graphics.UI.Gtk
 import Data.Typeable (cast, Typeable)
 import Control.Concurrent (yield)
+import Paths_leksah_main
+import Control.Exception (catch, SomeException)
+import System.FilePath((</>))
+import Prelude hiding(catch)
 
 -- ------------------------------------------------
 -- * It's a plugin
@@ -84,7 +86,20 @@ leksahInit2 baseEvent myEvent = trace ("init2 " ++ pluginName) $ do
         case baseEvent of
             StartUp       -> startupLeksah >> return baseEvent
             otherwise     -> return baseEvent)
+    registerFrameEvent (\ e -> case e of
+                                RegisterActions actions ->
+                                    return $ RegisterActions $ actions ++ myActions
+                                otherwise -> return e)
     return ()
+
+myActions :: [ActionDescr]
+myActions =
+    [AD "Panes" "_Panes" Nothing Nothing (return ()) Nothing ActionSubmenu
+        (MPBefore ["View"]) TPNo [],
+     AD "Help" "_Help" Nothing Nothing (return ()) Nothing ActionSubmenu
+        (MPLast [] False) TPNo [],
+     AD "HelpAbout" "_About" Nothing (Just "gtk-about") (liftIO aboutDialog) Nothing ActionNormal
+        (MPLast ["Help"] False) TPNo []]
 
 -- ------------------------------------------------
 -- * It's a plugin
@@ -97,4 +112,23 @@ beforeMainGUI win vb nb = do
     postAsyncState (triggerLeksahEvent Started >> return ())
 
 
+--
+-- | Show the about dialog
+--
+aboutDialog :: IO ()
+aboutDialog = do
+    d <- aboutDialogNew
+    aboutDialogSetName d "Leksah"
+    aboutDialogSetVersion d (showVersion version)
+    aboutDialogSetCopyright d "Copyright 2007-2011 Jürgen Nicklisch-Franken, Hamish Mackenzie"
+    aboutDialogSetComments d $ "An integrated development environement (IDE) for the " ++
+                               "programming language Haskell and the Glasgow Haskell Compiler"
+    dd <- getDataDir
+    license <- catch (readFile $ dd </> "LICENSE") (\ (_ :: SomeException) -> return "")
+    aboutDialogSetLicense d $ Just license
+    aboutDialogSetWebsite d "http://leksah.org/"
+    aboutDialogSetAuthors d ["Jürgen Nicklisch-Franken","Hamish Mackenzie"]
+    dialogRun d
+    widgetDestroy d
+    return ()
 

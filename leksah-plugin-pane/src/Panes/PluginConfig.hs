@@ -44,7 +44,7 @@ import Control.Concurrent (threadDelay)
 
 pluginPanePluginInterface :: StateM (PluginInterface PluginPaneEvent)
 pluginPanePluginInterface = do
-    fe <- makeEvent pluginName
+    fe <- makeEvent LeksahPluginPaneEventSel
     return $ PluginInterface {
          piInit1   = init1,
          piInit2   = init2,
@@ -214,11 +214,11 @@ buildPluginConfigPane = \ pp nb w -> do
             fpEqual = \ v1 v2 -> v1{cfChoices = []} == v2{cfChoices = []},
             fpGuiHandlers = handlers,
             fpExtraButtons = [newButton]}
-    handlers = [([Selection],(\ event ->
+    handlers = [([Selection],(\ event -> trace "double" $
                 case geMbSelection event of
                     Nothing -> return event
                     Just (GenSelection sel) -> case cast sel of
-                                                    Nothing -> return event
+                                                    Nothing -> trace "cast prob" $ return event
                                                     Just s -> do
                                                         openPluginPane s
                                                         return event))]

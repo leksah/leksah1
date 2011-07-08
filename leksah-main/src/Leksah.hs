@@ -21,9 +21,7 @@ module Leksah (
     , registerLeksahEvent
 ) where
 
-import Base.Event
-import Base.PluginTypes
-import Base.State
+import Base
 import Graphics.Pane
 
 import Data.Version (showVersion, Version(..))
@@ -47,6 +45,11 @@ import Prelude hiding(catch)
 
 pluginName = "leksah-main"
 
+data LeksahMainSelector = LeksahEventSel
+    deriving (Eq,Ord,Show,Typeable)
+
+instance Selector LeksahMainSelector
+
 --
 -- | Events the gui frame triggers
 --
@@ -54,17 +57,17 @@ data LeksahEvent = Started
         deriving (Show, Typeable)
 
 triggerLeksahEvent :: LeksahEvent -> StateM(LeksahEvent)
-triggerLeksahEvent = triggerEvent pluginName
+triggerLeksahEvent = triggerEvent LeksahEventSel
 
 getLeksahEvent :: StateM (PEvent LeksahEvent)
-getLeksahEvent = getEvent pluginName
+getLeksahEvent = getEvent LeksahEventSel
 
 registerLeksahEvent :: Handler LeksahEvent -> StateM HandlerID
 registerLeksahEvent handler = getLeksahEvent >>= \e -> registerEvent e handler
 
 leksahPluginInterface :: StateM (PluginInterface LeksahEvent)
 leksahPluginInterface = do
-    ev <- makeEvent pluginName
+    ev <- makeEvent LeksahEventSel
     return $ PluginInterface {
          piInit1   = leksahInit1,
          piInit2   = leksahInit2,

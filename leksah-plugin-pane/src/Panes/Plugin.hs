@@ -40,15 +40,20 @@ import Control.Monad (when, liftM)
 
 pluginName = "leksah-plugin-pane"
 
+data LeksahPluginPaneSelector = LeksahPluginPaneEventSel
+    deriving (Eq,Ord,Show,Typeable)
+
+instance Selector LeksahPluginPaneSelector
+
 
 data PluginPaneEvent = PluginConfigChanged | PluginDescrChanged
         deriving (Eq, Show, Typeable)
 
 triggerPluginPane :: PluginPaneEvent -> StateM (PluginPaneEvent)
-triggerPluginPane = triggerEvent pluginName
+triggerPluginPane = triggerEvent LeksahPluginPaneEventSel
 
 getPluginPaneEvent :: StateM (PEvent PluginPaneEvent)
-getPluginPaneEvent = getEvent pluginName
+getPluginPaneEvent = getEvent LeksahPluginPaneEventSel
 
 registerPluginPaneEvent :: Handler PluginPaneEvent -> StateM HandlerID
 registerPluginPaneEvent handler = getPluginPaneEvent >>= \e -> registerEvent e handler

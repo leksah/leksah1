@@ -1,4 +1,4 @@
-{-# Language DeriveDataTypeable, MultiParamTypeClasses, ScopedTypeVariables #-}
+{-# Language DeriveDataTypeable, MultiParamTypeClasses, ScopedTypeVariables, TypeFamilies #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Panes.PluginConfig
@@ -23,7 +23,7 @@ import Leksah
 import Panes.Plugin
 
 import Graphics.UI.Gtk hiding (eventClick)
-import Data.Typeable (cast, Typeable)
+import Data.Typeable (Typeable(..), cast, Typeable)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.IORef (writeIORef, readIORef, newIORef)
 import qualified Data.Map as Map (empty)
@@ -34,7 +34,7 @@ import System.FilePath ((<.>), (</>), dropFileName)
 import Data.List (intersperse, nubBy)
 import Text.Parsec (parse)
 import Graphics.UI.Gtk.Gdk.Events (Event(..))
-import Control.Monad (when)
+import Control.Monad (liftM, when)
 import System.Directory (removeFile)
 import Control.Concurrent (threadDelay)
 
@@ -65,13 +65,20 @@ init2 baseEvent myEvent = trace ("init2 " ++ pluginName) $ do
     registerFrameEvent (\ e -> case e of
                                 RegisterActions actions ->
                                     return $ RegisterActions $ actions ++ myActions
+                                RegisterPane paneTypes ->
+                                    return $ RegisterPane $ paneTypes ++ myPaneTypes
                                 otherwise -> return e)
     return ()
 
 myActions :: [ActionDescr]
 myActions =
     [AD "PluginConfig" "PluginConfig" Nothing Nothing openPluginConfigPane Nothing ActionNormal
-        (MPLast ["Panes"] False) TPNo []]
+        (Just $ MPLast ["Panes"] False) Nothing []]
+
+myPaneTypes :: [(String,GenPane)]
+myPaneTypes =
+    [(paneType (undefined :: PluginConfigPane), PaneC (undefined :: PluginConfigPane)),
+     (paneType (undefined :: PluginPane), PaneC (undefined :: PluginPane)) ]
 
 openPluginConfigPane :: StateM ()
 openPluginConfigPane = do
@@ -82,22 +89,17 @@ openPluginConfigPane = do
         Just p -> registerRefresh p >> return ()
     return ()
 
-
-registerRefresh pane = registerPluginPaneEvent (\e -> trace "PluginChanged1" $
-    if  (e /= PluginDescrChanged)
-        then return e
-        else do
-            mbV <-  pcpExt pane
-            case mbV of
-                Nothing -> return e
-                Just v -> do
-                    currentConfigPath   <- getCurrentConfigPath
-                    prerequisites       <- liftIO $ getPrereqChoices currentConfigPath
-                    let pluginConfig'   =  v{cfChoices = prerequisites
-                                                                ++ cfPlugins v}
-                    (pcpInj pane) pluginConfig'
-                    return e)
-
+registerRefresh pane = getPluginPaneEvent >>= \e -> registerEvent'' e PluginDescrChanged
+    (do
+        mbV <-  pcpExt pane
+        case mbV of
+            Nothing -> return ()
+            Just v -> do
+                currentConfigPath   <- getCurrentConfigPath
+                prerequisites       <- liftIO $ getPrereqChoices currentConfigPath
+                let pluginConfig'   =  v{cfChoices = prerequisites
+                                                            ++ cfPlugins v}
+                (pcpInj pane) pluginConfig')
 
 -- ----------------------------------------------
 -- * It's a pane
@@ -109,18 +111,22 @@ data PluginConfigPane = PluginConfigPane {
     pcpExt              :: Extractor PluginConfig
 } deriving Typeable
 
-data PluginConfigPaneState = PluginConfigPaneState
-    deriving(Eq,Ord,Read,Show,Typeable)
 
-instance PaneInterface PluginConfigPane PluginConfigPaneState where
+instance PaneInterface PluginConfigPane where
+    data PaneState PluginConfigPane =  PCPaneState
+            deriving(Read,Show)
+
     getTopWidget    =  \ p   -> castToWidget (pcpTopW p)
     primPaneName    =  \ dp  -> "PluginConfig"
-    paneId          =  \ _   -> "**PluginConfig"
-    saveState       =  \ s   -> return Nothing
-    recoverState    =  \ s _ -> return Nothing
+    paneType        =  \ _   -> "**PluginConfig"
+    saveState       =  \ s   -> return $ Just (PCPaneState)
+    recoverState    =  \ pp ps -> do
+        nb      <-  getNotebook pp
+        mbP     <-  buildPane pp nb builder
+        return mbP
     builder         =  buildPluginConfigPane
 
-instance Pane PluginConfigPane PluginConfigPaneState
+instance Pane PluginConfigPane
 
 -- ----------------------------------------------
 -- * It's contest is a form
@@ -203,7 +209,7 @@ buildPluginConfigPane = \ pp nb w -> do
         pluginConfig        <- liftIO $ loadPluginConfig currentConfigPath
         prerequisites       <- liftIO $ getPrereqChoices currentConfigPath
         return $ pluginConfig{cfChoices = prerequisites ++ cfPlugins pluginConfig}
-    formPaneDescr :: FormPaneDescr PluginConfig PluginConfigPane PluginConfigPaneState =
+    formPaneDescr :: FormPaneDescr PluginConfig PluginConfigPane =
         FormPaneDescr {
             fpGetPane     = \ top inj ext -> PluginConfigPane top inj ext,
             fpSaveAction  = \ v -> do

@@ -18,7 +18,6 @@ module Leksah (
     , LeksahEvent(..)
     , getLeksahEvent
     , triggerLeksahEvent
-    , registerLeksahEvent
 ) where
 
 import Base
@@ -32,7 +31,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import GHC.IO(unsafePerformIO)
 import Debug.Trace (trace)
 import Graphics.UI.Gtk
-import Data.Typeable (cast, Typeable)
+import Data.Typeable (Typeable)
 import Control.Concurrent (yield)
 import Paths_leksah_main
 import Control.Exception (catch, SomeException)
@@ -62,9 +61,6 @@ triggerLeksahEvent = triggerEvent LeksahEventSel
 getLeksahEvent :: StateM (PEvent LeksahEvent)
 getLeksahEvent = getEvent LeksahEventSel
 
-registerLeksahEvent :: Handler LeksahEvent -> StateM HandlerID
-registerLeksahEvent handler = getLeksahEvent >>= \e -> registerEvent e handler
-
 leksahPluginInterface :: StateM (PluginInterface LeksahEvent)
 leksahPluginInterface = do
     ev <- makeEvent LeksahEventSel
@@ -72,7 +68,7 @@ leksahPluginInterface = do
          piInit1   = leksahInit1,
          piInit2   = leksahInit2,
          piEvent   = ev,
-         piName    = "billeksah-main",
+         piName    = pluginName,
          piVersion = Version [1,0,0][]}
 
 data LeksahPrefs = LeksahPrefs
@@ -85,24 +81,22 @@ leksahInit1 baseEvent myEvent = trace ("init1 " ++ pluginName) $ do
 
 leksahInit2 :: BaseEvent -> PEvent LeksahEvent -> StateM ()
 leksahInit2 baseEvent myEvent = trace ("init2 " ++ pluginName) $ do
-    registerEvent baseEvent (\ baseEvent ->
-        case baseEvent of
-            StartUp       -> startupLeksah >> return baseEvent
-            otherwise     -> return baseEvent)
-    registerFrameEvent (\ e -> case e of
+    registerEvent'' baseEvent StartUp startupLeksah
+    getFrameEvent >>= \e -> registerEvent e
+                            (\ s -> case s of
                                 RegisterActions actions ->
                                     return $ RegisterActions $ actions ++ myActions
-                                otherwise -> return e)
+                                otherwise -> return s)
     return ()
 
 myActions :: [ActionDescr]
 myActions =
     [AD "Panes" "_Panes" Nothing Nothing (return ()) Nothing ActionSubmenu
-        (MPBefore ["View"]) TPNo [],
+        (Just $ MPBefore ["View"]) Nothing [],
      AD "Help" "_Help" Nothing Nothing (return ()) Nothing ActionSubmenu
-        (MPLast [] False) TPNo [],
+        (Just $ MPLast [] False) Nothing [],
      AD "HelpAbout" "_About" Nothing (Just "gtk-about") (liftIO aboutDialog) Nothing ActionNormal
-        (MPLast ["Help"] False) TPNo []]
+        (Just $ MPLast ["Help"] False) Nothing []]
 
 -- ------------------------------------------------
 -- * It's a plugin

@@ -1,4 +1,4 @@
-{-# Language DeriveDataTypeable, MultiParamTypeClasses, ScopedTypeVariables, RankNTypes #-}
+{-# Language DeriveDataTypeable, MultiParamTypeClasses, ScopedTypeVariables, RankNTypes, TypeFamilies #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Panes.Plugin
@@ -45,7 +45,6 @@ data LeksahPluginPaneSelector = LeksahPluginPaneEventSel
 
 instance Selector LeksahPluginPaneSelector
 
-
 data PluginPaneEvent = PluginConfigChanged | PluginDescrChanged
         deriving (Eq, Show, Typeable)
 
@@ -55,8 +54,6 @@ triggerPluginPane = triggerEvent LeksahPluginPaneEventSel
 getPluginPaneEvent :: StateM (PEvent PluginPaneEvent)
 getPluginPaneEvent = getEvent LeksahPluginPaneEventSel
 
-registerPluginPaneEvent :: Handler PluginPaneEvent -> StateM HandlerID
-registerPluginPaneEvent handler = getPluginPaneEvent >>= \e -> registerEvent e handler
 
 -- ----------------------------------------------
 -- * It's a pane
@@ -66,20 +63,30 @@ data PluginPane = PluginPane {
     ppTop :: VBox,
     ppInj :: Injector Plugin,
     ppExt :: Extractor Plugin
-} deriving Typeable
+} deriving (Typeable)
 
-data PluginPaneState              =   PluginPaneState
-    deriving(Eq,Ord,Read,Show,Typeable)
 
-instance PaneInterface PluginPane PluginPaneState where
+instance PaneInterface PluginPane  where
+    data PaneState PluginPane =  PPState (Maybe Plugin)
+            deriving(Read,Show)
+
     getTopWidget    =  \ p   -> castToWidget (ppTop p)
     primPaneName    =  \ dp  -> "Plugin"
-    paneId          =  \ _   -> "**Plugin"
-    saveState       =  \ s   -> return Nothing
-    recoverState    =  \ s _ -> return Nothing
+    paneType        =  \ _   -> "**Plugin"
+    saveState       =  \ p   -> do
+        mbVal <- ppExt p
+        return $ Just (PPState mbVal)
+    recoverState    =  \ pp ps -> do
+        nb      <-  getNotebook pp
+        mbP     <-  buildPane pp nb builder
+        case mbP of
+            Nothing -> return Nothing
+            Just p  -> case ps of
+                        PPState Nothing  -> return $ Just p
+                        PPState (Just v) -> (ppInj p) v >>= \ _ -> return $ Just p
     builder         =  buildPluginPane
 
-instance Pane PluginPane PluginPaneState
+instance Pane PluginPane
 
 openPluginPane :: Prerequisite -> StateM ()
 openPluginPane (name,bounds) = do
@@ -195,7 +202,7 @@ buildPluginPane = \ pp nb w -> makeValue >>= \ initial ->
         choices             <- liftIO $ getPrereqChoices (dropFileName currentConfigPath)
         return defaultPlugin{plChoices = choices}
 
-    formPaneDescr :: FormPaneDescr Plugin PluginPane PluginPaneState = FormPaneDescr {
+    formPaneDescr :: FormPaneDescr Plugin PluginPane = FormPaneDescr {
         fpGetPane     = \ top inj ext -> PluginPane top inj ext,
         fpSaveAction  = \ v ->  do
                                     currentConfigPath <- getCurrentConfigPath

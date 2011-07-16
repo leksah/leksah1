@@ -81,7 +81,9 @@ leksahInit1 baseEvent myEvent = trace ("init1 " ++ pluginName) $ do
 
 leksahInit2 :: BaseEvent -> PEvent LeksahEvent -> StateM ()
 leksahInit2 baseEvent myEvent = trace ("init2 " ++ pluginName) $ do
-    registerEvent'' baseEvent StartUp startupLeksah
+    registerEvent' baseEvent (\ e -> case e of
+                                        StartUp -> startupLeksah
+                                        _ -> return ())
     getFrameEvent >>= \e -> registerEvent e
                             (\ s -> case s of
                                 RegisterActions actions ->

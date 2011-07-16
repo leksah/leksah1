@@ -89,17 +89,20 @@ openPluginConfigPane = do
         Just p -> registerRefresh p >> return ()
     return ()
 
-registerRefresh pane = getPluginPaneEvent >>= \e -> registerEvent'' e PluginDescrChanged
-    (do
-        mbV <-  pcpExt pane
-        case mbV of
-            Nothing -> return ()
-            Just v -> do
-                currentConfigPath   <- getCurrentConfigPath
-                prerequisites       <- liftIO $ getPrereqChoices currentConfigPath
-                let pluginConfig'   =  v{cfChoices = prerequisites
-                                                            ++ cfPlugins v}
-                (pcpInj pane) pluginConfig')
+registerRefresh pane = getPluginPaneEvent >>= \e -> registerEvent' e
+    (\ evt -> case evt of
+                PluginDescrChanged -> do
+                    mbV <-  pcpExt pane
+                    case mbV of
+                        Nothing -> return ()
+                        Just v -> do
+                            currentConfigPath   <- getCurrentConfigPath
+                            prerequisites       <- liftIO $ getPrereqChoices
+                                                        currentConfigPath
+                            let pluginConfig'   =  v{cfChoices = prerequisites
+                                                                 ++ cfPlugins v}
+                            (pcpInj pane) pluginConfig'
+                otherwise -> return ())
 
 -- ----------------------------------------------
 -- * It's a pane

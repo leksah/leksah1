@@ -10,7 +10,6 @@
 -- Portability :
 --
 -- | An editor for a plugin config
--- TODO: a refresh of the options?? An inject on a config changed event.
 --
 -----------------------------------------------------------------------------
 
@@ -28,7 +27,6 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.IORef (writeIORef, readIORef, newIORef)
 import qualified Data.Map as Map (empty)
 import Data.Version (showVersion, Version(..))
-import Debug.Trace (trace)
 import qualified Text.PrettyPrint as PP (text)
 import System.FilePath ((<.>), (</>), dropFileName)
 import Data.List (intersperse, nubBy)
@@ -58,10 +56,11 @@ pluginPanePluginInterface = do
 --
 
 init1 :: BaseEvent -> PEvent PluginPaneEvent -> StateM ()
-init1 baseEvent myEvent = trace ("init1 " ++ pluginName) $ return ()
+init1 baseEvent myEvent = message Debug ("init1 " ++ pluginName) >> return ()
 
 init2 :: BaseEvent -> PEvent PluginPaneEvent -> StateM ()
-init2 baseEvent myEvent = trace ("init2 " ++ pluginName) $ do
+init2 baseEvent myEvent = do
+    message Debug ("init2 " ++ pluginName)
     registerFrameEvent (\ e -> case e of
                                 RegisterActions actions ->
                                     return $ RegisterActions $ actions ++ myActions
@@ -77,13 +76,14 @@ myActions =
 
 myPaneTypes :: [(String,GenPane)]
 myPaneTypes =
-    [(paneType (undefined :: PluginConfigPane), PaneC (undefined :: PluginConfigPane)),
-     (paneType (undefined :: PluginPane), PaneC (undefined :: PluginPane)) ]
+    [asRegisterType (undefined :: PluginConfigPane),
+    asRegisterType (undefined :: PluginPane)]
+
 
 openPluginConfigPane :: StateM ()
 openPluginConfigPane = do
-    liftIO $ putStrLn "Open plugin config pane"
-    mbPane :: Maybe PluginConfigPane <- getAndDisplayPane (Left []) True
+    message Debug "Open plugin config pane"
+    mbPane :: Maybe PluginConfigPane <- getOrBuildDisplay (Left []) True
     case mbPane of
         Nothing -> return ()
         Just p -> registerRefresh p >> return ()
@@ -135,40 +135,36 @@ instance Pane PluginConfigPane
 -- * It's contest is a form
 --
 
-pluginConfDescr ::  FieldDescription PluginConfig
-pluginConfDescr = VFD  emptyParams [
-    HFD  (paraName <<<- ParaName "Name and Version" $ emptyParams) [
-            mkField
-                (paraPack <<<- (ParaPack PackGrow) $
-                    paraName <<<- ParaName "Name of the config" $ emptyParams)
+pluginConfDescr ::  FieldDescriptionG PluginConfig
+pluginConfDescr = VertBoxG  defaultParams [
+    HoriBoxG  defaultParams [
+            mkFieldG
+                "Name of the config"
+                defaultParams
                 cfName
                 (\ b a -> a{cfName = b})
                 (stringEditor (const True) True)
-        ,   mkField
-                (paraPack <<<- (ParaPack PackGrow) $
-                    paraName <<<- ParaName "Version" $ emptyParams)
+        ,   mkFieldG
+                "Version"
+                defaultParams
                 cfVersion
                 (\ b a -> a{cfVersion = b})
-                versionEditor]
-    ,   mkField
-            (paraName <<<- ParaName "Plugin list"
-                $ paraSynopsis <<<- ParaSynopsis "e.g. [(\"plug1\",(Nothing,Nothing))]"
-                    $ paraSynopsis <<<- ParaDirection Vertical
-                        $ paraMinSize <<<- ParaMinSize (-1,125)
-                            $ emptyParams)
-            (\ plugin -> (cfPlugins plugin,cfChoices plugin))
-            (\ b a -> a{cfPlugins = fst b, cfChoices = snd b})
-            (prerequisitesEditor (Just deleteHandler))
-    ,   mkField
-             (paraName <<<- ParaName "Synopsis"
-                $ paraSynopsis <<<- ParaSynopsis "or call it comment"
-                    $ emptyParams)
-            cfSynopsis
-            (\ b a -> a{cfSynopsis = b})
-            multilineStringEditor]
-  where
-    showMbVersion Nothing        = "any"
-    showMbVersion (Just version) = showVersion version
+                versionEditor],
+    HoriBoxG  (("VPack", ParaPack PackGrow) <<< defaultParams) [
+            mkFieldG
+                "Plugin list"
+                (("Direction", ParaDir Vertical) <<<
+                    ("MinSize", ParaSize (-1,125)) <<< defaultParams)
+                (\ plugin -> (cfPlugins plugin,cfChoices plugin))
+                (\ b a -> a{cfPlugins = fst b, cfChoices = snd b})
+                (prerequisitesEditor (Just deleteHandler))
+        ,   mkFieldG
+                "Synopsis"
+                (("Synopsis", ParaString ("or call it comment or use it" ++
+                    "\n for whatever you like")) <<< defaultParams)
+                cfSynopsis
+                (\ b a -> a{cfSynopsis = b})
+                multilineStringEditor]]
 
 deleteHandler prereqList     = do
     currentConfigPath   <- getCurrentConfigPath
@@ -188,15 +184,14 @@ deleteHandler prereqList     = do
 deleteHandler' currentConfigPath (name,bounds) = do
     res               <- liftIO $ loadPluginDescription currentConfigPath (name,bounds)
     case res of
-        Right errorStr  ->  liftIO $ putStrLn ("Can't find plugin: " ++ errorStr)
+        Right errorStr  ->  message Error ("Can't find plugin: " ++ errorStr)
         Left plugin     ->  reifyState (\ stateR -> catch
             (do
                 removeFile $ currentConfigPath </> getPluginName plugin <.> "lkshp"
                 reflectState (triggerPluginPane
                                 PluginDescrChanged) stateR
                 return ())
-            (\e -> reflectState (triggerBaseEvent
-                (BaseError (show e)) >> return ()) stateR))
+            (\e -> reflectState (message Error (show e)) stateR))
 
 -- ----------------------------------------------
 -- * Building the pane in standard form
@@ -214,20 +209,23 @@ buildPluginConfigPane = \ pp nb w -> do
         return $ pluginConfig{cfChoices = prerequisites ++ cfPlugins pluginConfig}
     formPaneDescr :: FormPaneDescr PluginConfig PluginConfigPane =
         FormPaneDescr {
-            fpGetPane     = \ top inj ext -> PluginConfigPane top inj ext,
-            fpSaveAction  = \ v -> do
+            fpGetPane      = \ top inj ext -> PluginConfigPane top inj ext,
+            fpSaveAction   = \ v -> do
                 currentConfigPath <- getCurrentConfigPath
                 liftIO $ writePluginConfig currentConfigPath v
                 triggerPluginPane PluginConfigChanged
                 return (),
-            fpEqual = \ v1 v2 -> v1{cfChoices = []} == v2{cfChoices = []},
-            fpGuiHandlers = handlers,
+            fpHasChanged   = \ v1 v2 -> v1{cfChoices = []} == v2{cfChoices = []},
+            fpGuiHandlers  = handlers,
             fpExtraButtons = [newButton]}
-    handlers = [([Selection],(\ event -> trace "double" $
+    handlers = [([Selection],(\ event ->
                 case geMbSelection event of
                     Nothing -> return event
                     Just (GenSelection sel) -> case cast sel of
-                                                    Nothing -> trace "cast prob" $ return event
+                                                    Nothing -> do
+                                                        message Error ("cPluginConfig>>buildPluginConfigPane:" ++
+                                                         " cast problem")
+                                                        return event
                                                     Just s -> do
                                                         openPluginPane s
                                                         return event))]

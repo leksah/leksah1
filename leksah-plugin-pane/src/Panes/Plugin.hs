@@ -26,7 +26,6 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.IORef (readIORef, writeIORef, newIORef)
 import qualified Data.Map as Map (empty)
 import Data.Version (showVersion, Version(..))
-import Debug.Trace (trace)
 import qualified Text.PrettyPrint as PP (text)
 import System.FilePath ((<.>), (</>), dropFileName)
 import Data.List (nubBy)
@@ -95,9 +94,9 @@ openPluginPane (name,bounds) = do
     choices           <- liftIO $ getPrereqChoices (dropFileName currentConfigPath)
     let choices' = filter (\ (n,_) -> n /= name) choices
     case res of
-        Right errorStr  ->  liftIO $ putStrLn ("Can't find plugin: " ++ errorStr)
+        Right errorStr  ->  message Error ("Can't find plugin: " ++ errorStr)
         Left plugin     -> do
-            pane :: Maybe PluginPane <- getAndDisplayPane (Left []) True
+            pane :: Maybe PluginPane <- getOrBuildDisplay (Left []) True
             case pane of
                 Nothing -> return ()
                 Just p -> do
@@ -109,7 +108,7 @@ openPluginPane' plugin = do
     currentConfigPath <- liftM dropFileName getCurrentConfigPath
     choices           <- liftIO $ getPrereqChoices (dropFileName currentConfigPath)
     let choices' = filter (\ (n,_) -> n /= (plName plugin)) choices
-    pane :: Maybe PluginPane <- getAndDisplayPane (Left []) True
+    pane :: Maybe PluginPane <- getOrBuildDisplay (Left []) True
     case pane of
         Nothing -> return ()
         Just p -> do
@@ -122,49 +121,48 @@ openPluginPane' plugin = do
 -- * The form
 --
 
-pluginDescr ::  FieldDescription Plugin
-pluginDescr = VFD emptyParams [
-    HFD (paraName <<<- ParaName "Name and Version" $ emptyParams)  [
-        mkField
-            (paraPack <<<- (ParaPack PackGrow) $
-                paraName <<<- ParaName "Name of the plugin" $ emptyParams)
+pluginDescr ::  FieldDescriptionG Plugin
+pluginDescr = VertBoxG defaultParams [
+    HoriBoxG defaultParams [
+        mkFieldG
+            "Name of the plugin"
+            defaultParams
             plName
             (\ b a -> a{plName = b})
             (stringEditor (const True) True)
-    ,   mkField
-            (paraPack <<<- (ParaPack PackGrow) $
-                paraName <<<- ParaName "Version" $ emptyParams)
+    ,   mkFieldG
+            "Version"
+            defaultParams
             plVersion
             (\ b a -> a{plVersion = b})
             versionEditor],
-    HFD emptyParams [
-       mkField
-            (paraPack <<<- (ParaPack PackGrow) $
-                paraName <<<- ParaName "Module" $ emptyParams)
+    HoriBoxG defaultParams [
+        mkFieldG
+            "Modul"
+            defaultParams
             plModule
             (\ b a -> a{plModule = b})
             (stringEditor (const True) True)
-    ,   mkField
-            (paraPack <<<- (ParaPack PackGrow) $
-                paraName <<<- ParaName "Interface" $ emptyParams)
+    ,   mkFieldG
+            "Interface"
+            defaultParams
             plInterface
             (\ b a -> a{plInterface = b})
-            (stringEditor (const True) True)]
-    ,   mkField
-            (paraName <<<- ParaName "Prerequisites"
-                    $ paraSynopsis <<<- ParaDirection Vertical
-                        $ paraMinSize <<<- ParaMinSize (-1,125)
-                            $ emptyParams)
+            (stringEditor (const True) True)],
+    HoriBoxG (("VPack", ParaPack PackGrow) <<< defaultParams) [
+        mkFieldG
+            "Prerequisites"
+            (("Direction", ParaDir Vertical) <<<
+                ("MinSize", ParaSize (-1,125)) <<< defaultParams)
             (\ plugin -> (plPrerequisites plugin,plChoices plugin))
             (\ b a -> a{plPrerequisites = fst b, plChoices = snd b})
             (prerequisitesEditor Nothing)
-    ,   mkField
-             (paraName <<<- ParaName "Synopsis"
-                $ paraSynopsis <<<- ParaSynopsis "or call it comment"
-                    $ emptyParams)
+    ,   mkFieldG
+            "Synopsis"
+            (("Synopsis", ParaString "or call it comment") <<< defaultParams)
             plSynopsis
             (\ b a -> a{plSynopsis = b})
-            multilineStringEditor]
+            multilineStringEditor]]
 
 prerequisitesEditor mbDeleteHandler =
     selectionEditor
@@ -203,15 +201,15 @@ buildPluginPane = \ pp nb w -> makeValue >>= \ initial ->
         return defaultPlugin{plChoices = choices}
 
     formPaneDescr :: FormPaneDescr Plugin PluginPane = FormPaneDescr {
-        fpGetPane     = \ top inj ext -> PluginPane top inj ext,
-        fpSaveAction  = \ v ->  do
+        fpGetPane      = \ top inj ext -> PluginPane top inj ext,
+        fpSaveAction   = \ v ->  do
                                     currentConfigPath <- getCurrentConfigPath
                                     liftIO $ writePluginDescr (dropFileName currentConfigPath
                                                         </> getPluginName v <.> ".lkshp") v
                                     triggerPluginPane PluginDescrChanged
                                     return (),
-        fpEqual = \ v1 v2 -> v1{plChoices = []} == v2{plChoices = []},
-        fpGuiHandlers = [],
+        fpHasChanged   = \ v1 v2 -> v1{plChoices = []} == v2{plChoices = []},
+        fpGuiHandlers  = [],
         fpExtraButtons = []}
 
 

@@ -29,7 +29,6 @@ import Control.Monad.Reader (ReaderT(..))
 import qualified Data.Map as Map (empty)
 import Control.Monad.IO.Class (MonadIO(..))
 import GHC.IO(unsafePerformIO)
-import Debug.Trace (trace)
 import Graphics.UI.Gtk
 import Data.Typeable (Typeable)
 import Control.Concurrent (yield)
@@ -75,12 +74,11 @@ data LeksahPrefs = LeksahPrefs
     -- TODO: Preferences plugin
 
 leksahInit1 :: BaseEvent -> PEvent LeksahEvent -> StateM ()
-leksahInit1 baseEvent myEvent = trace ("init1 " ++ pluginName) $ do
-
-    return ()
+leksahInit1 baseEvent myEvent = message Debug ("init1 " ++ pluginName) >> return ()
 
 leksahInit2 :: BaseEvent -> PEvent LeksahEvent -> StateM ()
-leksahInit2 baseEvent myEvent = trace ("init2 " ++ pluginName) $ do
+leksahInit2 baseEvent myEvent = do
+    message Debug ("init2 " ++ pluginName)
     registerEvent' baseEvent (\ e -> case e of
                                         StartUp -> startupLeksah
                                         _ -> return ())

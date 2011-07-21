@@ -25,7 +25,6 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.IORef (newIORef)
 import qualified Data.Map as Map (empty)
 import Data.Version (Version(..))
-import Debug.Trace (trace)
 
 -- ----------------------------------------------
 -- | It's a plugin
@@ -65,25 +64,20 @@ getDummyEvent = getEvent DummyEvent
 --
 
 dummyInit1 :: BaseEvent -> PEvent DummyEvent -> StateM ()
-dummyInit1 baseEvent myEvent = trace ("init1 " ++ pluginName) $ return ()
+dummyInit1 baseEvent myEvent = message Debug  ("init1 " ++ pluginName) >> return ()
 
 dummyInit2 :: BaseEvent -> PEvent DummyEvent -> StateM ()
-dummyInit2 baseEvent myEvent = trace ("init2 " ++ pluginName) $ do
-    getFrameEvent >>= \ev -> registerEvent ev
-        (\ e -> case e of
-                    RegisterActions actions ->
-                        return $ RegisterActions $ actions ++ myActions
-                    RegisterPane paneTypes ->
-                        return $ RegisterPane $ paneTypes ++ myPaneTypes
-                    RegisterSessionExt ext ->
-                        return $ RegisterSessionExt $ ext ++ mySessionExt
-                    otherwise -> return e)
-    return ()
+dummyInit2 baseEvent myEvent = do
+    message Debug  ("init2 " ++ pluginName)
+    getFrameEvent >>= \ev -> registerEvent ev frameEventHandler >> return ()
+
+frameEventHandler (RegisterActions actions) = return (RegisterActions $ actions ++ myActions)
+frameEventHandler (RegisterPane paneTypes)  = return (RegisterPane $ paneTypes ++ myPaneTypes)
+frameEventHandler (RegisterSessionExt ext)  = return (RegisterSessionExt $ ext ++ mySessionExt)
+frameEventHandler other                     = return other
 
 myPaneTypes :: [(String,GenPane)]
-myPaneTypes =
-    [(paneType (undefined :: DummyPane), PaneC (undefined :: DummyPane))]
-
+myPaneTypes =  map asRegisterType [undefined :: DummyPane]
 
 myActions :: [ActionDescr]
 myActions =
@@ -97,9 +91,7 @@ mySessionExt = [GenS (SessionExtension "dummy" (return 5)
                     (\ i -> liftIO $ putStrLn ("recovery2 " ++ show (i + 0.1))))]
 
 openDummy :: StateM ()
-openDummy = do
-    pane :: Maybe DummyPane <- getAndDisplayPane (Left []) True
-    return ()
+openDummy = (getOrBuildDisplay (Left []) True  :: StateM (Maybe DummyPane)) >> return ()
 
 -- ----------------------------------------------
 -- * It's a pane
@@ -120,7 +112,7 @@ instance PaneInterface DummyPane  where
     paneType        =  \ _   -> "**Dummy"
     saveState       =  \ s   -> return Nothing
     recoverState    =  \ s _ -> return Nothing
-    builder         = buildDummy
+    builder         =  buildDummy
 
 instance Pane DummyPane
 
@@ -134,7 +126,7 @@ buildDummy panePath notebook window = do
         button `onButtonPress` \ event -> reflectState (dummyAction >> return True) stateR
         return (Just info,[])
 
-dummyAction = trace "dummy action" $ do
+dummyAction = do
     state <- saveSession
-    trace ("###State: " ++ state) recoverSession state
+    recoverSession state
 

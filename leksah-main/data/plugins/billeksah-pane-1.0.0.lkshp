@@ -6,5 +6,5 @@ Interface:     "panePluginInterface"
 Prerequisite list:
                [(billeksah-forms,1.0.0,1.2)]
      --Plugin root pathes in the form ["p1","p2"]
-Synopsis:      ""
+Synopsis:      " "
      --or call it comment

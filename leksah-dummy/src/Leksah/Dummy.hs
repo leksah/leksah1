@@ -20,7 +20,7 @@ import Leksah
 import Graphics.Pane
 
 import Graphics.UI.Gtk
-import Data.Typeable (cast, Typeable)
+import Data.Typeable (Typeable)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.IORef (newIORef)
 import qualified Data.Map as Map (empty)
@@ -31,14 +31,19 @@ import Data.Version (Version(..))
 --
 pluginName = "leksah-dummy"
 
-data DummySelectors = DummyEvent
+data DummySel = DummySel
     deriving(Typeable, Show, Ord, Eq)
 
-instance Selector DummySelectors
+instance Selector DummySel where
+    type ValueType DummySel = PEvent DummyEvent
+
+instance EventSelector DummySel where
+    type BaseType DummySel = DummyEvent
+
 
 dummyPluginInterface :: StateM (PluginInterface DummyEvent)
 dummyPluginInterface = do
-    fe <- makeEvent DummyEvent
+    fe <- makeEvent DummySel
     return $ PluginInterface {
          piInit1   = dummyInit1,
          piInit2   = dummyInit2,
@@ -51,13 +56,13 @@ dummyPluginInterface = do
 --
 
 data DummyEvent = HelloWorld
-        deriving (Show, Typeable)
+        deriving Show
 
 triggerDummyEvent :: DummyEvent -> StateM (DummyEvent)
-triggerDummyEvent = triggerEvent DummyEvent
+triggerDummyEvent = triggerEvent DummySel
 
 getDummyEvent :: StateM (PEvent DummyEvent)
-getDummyEvent = getEvent DummyEvent
+getDummyEvent = getEvent DummySel
 
 -- -----------------------------------------------
 -- * Initialization
@@ -102,7 +107,7 @@ data DummyPane        =   DummyPane {
 } deriving Typeable
 
 data DummyPaneState              =   DPState
-    deriving(Eq,Ord,Read,Show,Typeable)
+    deriving(Eq,Ord,Read,Show)
 
 instance PaneInterface DummyPane  where
     data PaneState DummyPane =  DummyPaneState

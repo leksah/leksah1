@@ -21,7 +21,7 @@ import Leksah
 import Graphics.Forms
 
 import Graphics.UI.Gtk
-import Data.Typeable (cast, Typeable)
+import Data.Typeable (Typeable)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.IORef (readIORef, writeIORef, newIORef)
 import qualified Data.Map as Map (empty)
@@ -39,19 +39,24 @@ import Control.Monad (when, liftM)
 
 pluginName = "leksah-plugin-pane"
 
-data LeksahPluginPaneSelector = LeksahPluginPaneEventSel
+data LeksahPluginPaneSel = LeksahPluginPaneSel
     deriving (Eq,Ord,Show,Typeable)
 
-instance Selector LeksahPluginPaneSelector
+instance Selector LeksahPluginPaneSel where
+    type ValueType LeksahPluginPaneSel = PEvent PluginPaneEvent
+
+instance EventSelector LeksahPluginPaneSel where
+    type BaseType LeksahPluginPaneSel = PluginPaneEvent
+
 
 data PluginPaneEvent = PluginConfigChanged | PluginDescrChanged
-        deriving (Eq, Show, Typeable)
+        deriving (Eq, Show)
 
 triggerPluginPane :: PluginPaneEvent -> StateM (PluginPaneEvent)
-triggerPluginPane = triggerEvent LeksahPluginPaneEventSel
+triggerPluginPane = triggerEvent LeksahPluginPaneSel
 
 getPluginPaneEvent :: StateM (PEvent PluginPaneEvent)
-getPluginPaneEvent = getEvent LeksahPluginPaneEventSel
+getPluginPaneEvent = getEvent LeksahPluginPaneSel
 
 
 -- ----------------------------------------------

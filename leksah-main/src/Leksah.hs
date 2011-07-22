@@ -1,4 +1,4 @@
-{-# Language DeriveDataTypeable, StandaloneDeriving, ScopedTypeVariables #-}
+{-# Language DeriveDataTypeable, StandaloneDeriving, ScopedTypeVariables, TypeFamilies #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Leksah
@@ -28,7 +28,6 @@ import Data.IORef (newIORef, IORef)
 import Control.Monad.Reader (ReaderT(..))
 import qualified Data.Map as Map (empty)
 import Control.Monad.IO.Class (MonadIO(..))
-import GHC.IO(unsafePerformIO)
 import Graphics.UI.Gtk
 import Data.Typeable (Typeable)
 import Control.Concurrent (yield)
@@ -43,10 +42,14 @@ import Prelude hiding(catch)
 
 pluginName = "leksah-main"
 
-data LeksahMainSelector = LeksahEventSel
+data LeksahEventSel = LeksahEventSel
     deriving (Eq,Ord,Show,Typeable)
 
-instance Selector LeksahMainSelector
+instance Selector LeksahEventSel where
+    type ValueType LeksahEventSel = PEvent LeksahEvent
+
+instance EventSelector LeksahEventSel where
+    type BaseType LeksahEventSel = LeksahEvent
 
 --
 -- | Events the gui frame triggers

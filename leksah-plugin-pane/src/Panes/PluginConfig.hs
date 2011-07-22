@@ -42,14 +42,13 @@ import Control.Concurrent (threadDelay)
 
 pluginPanePluginInterface :: StateM (PluginInterface PluginPaneEvent)
 pluginPanePluginInterface = do
-    fe <- makeEvent LeksahPluginPaneEventSel
+    fe <- makeEvent LeksahPluginPaneSel
     return $ PluginInterface {
          piInit1   = init1,
          piInit2   = init2,
          piEvent   = fe,
          piName    = pluginName,
          piVersion = Version [1,0,0][]}
-
 
 -- -----------------------------------------------
 -- * Initialization
@@ -61,13 +60,10 @@ init1 baseEvent myEvent = message Debug ("init1 " ++ pluginName) >> return ()
 init2 :: BaseEvent -> PEvent PluginPaneEvent -> StateM ()
 init2 baseEvent myEvent = do
     message Debug ("init2 " ++ pluginName)
-    registerFrameEvent (\ e -> case e of
-                                RegisterActions actions ->
-                                    return $ RegisterActions $ actions ++ myActions
-                                RegisterPane paneTypes ->
-                                    return $ RegisterPane $ paneTypes ++ myPaneTypes
-                                otherwise -> return e)
-    return ()
+    registerFrameEvent handler >> return ()
+  where handler (RegisterActions actions) = return $ RegisterActions $ actions ++ myActions
+        handler (RegisterPane paneTypes)  = return $ RegisterPane $ paneTypes ++ myPaneTypes
+        handler e                         = return e
 
 myActions :: [ActionDescr]
 myActions =
@@ -77,8 +73,7 @@ myActions =
 myPaneTypes :: [(String,GenPane)]
 myPaneTypes =
     [asRegisterType (undefined :: PluginConfigPane),
-    asRegisterType (undefined :: PluginPane)]
-
+     asRegisterType (undefined :: PluginPane)]
 
 openPluginConfigPane :: StateM ()
 openPluginConfigPane = do
@@ -89,20 +84,20 @@ openPluginConfigPane = do
         Just p -> registerRefresh p >> return ()
     return ()
 
-registerRefresh pane = getPluginPaneEvent >>= \e -> registerEvent' e
-    (\ evt -> case evt of
-                PluginDescrChanged -> do
-                    mbV <-  pcpExt pane
-                    case mbV of
-                        Nothing -> return ()
-                        Just v -> do
-                            currentConfigPath   <- getCurrentConfigPath
-                            prerequisites       <- liftIO $ getPrereqChoices
-                                                        currentConfigPath
-                            let pluginConfig'   =  v{cfChoices = prerequisites
-                                                                 ++ cfPlugins v}
-                            (pcpInj pane) pluginConfig'
-                otherwise -> return ())
+registerRefresh pane = getPluginPaneEvent >>= (\e -> registerEvent' e handler)
+  where
+    handler PluginDescrChanged =  do
+        mbV <-  pcpExt pane
+        case mbV of
+            Nothing -> return ()
+            Just v -> do
+                currentConfigPath   <- getCurrentConfigPath
+                prerequisites       <- liftIO $ getPrereqChoices
+                                            currentConfigPath
+                let pluginConfig'   =  v{cfChoices = prerequisites
+                                                     ++ cfPlugins v}
+                (pcpInj pane) pluginConfig'
+    handler otherwise          =  return ()
 
 -- ----------------------------------------------
 -- * It's a pane

@@ -1,10 +1,9 @@
 Name of the plugin:
-               "leksah-plugin-pane"
+               leksah-plugin-pane
 Version:       1.0.0
-Module:        "Panes.PluginConfig"
-Interface:     "pluginPanePluginInterface"
+Module:        Panes.PluginConfig
+Interface:     pluginPanePluginInterface
 Prerequisite list:
                [(billeksah-forms,any,any),(billeksah-pane,any,any)]
-     --Plugin root pathes in the form ["p1","p2"]
-Synopsis:      ""
+Synopsis:      
      --or call it comment

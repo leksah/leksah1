@@ -1,7 +1,8 @@
 Name of the config:
-               "LeksahStandard"
+               LeksahStandard
 Version:       1.0
-Plugin list:   [(billeksah-forms,1,1.1),(billeksah-pane,1,1.1),(leksah-dummy,1.0,1.1),(leksah-main,1,1.1),(leksah-plugin-pane,1,1.1)]
-     --e.g. [("plug1",(Nothing,Nothing))]
-Synopsis:      "The standard Leksah plugin config, so far."
-     --or call it comment
+Plugin list:   [(billeksah-forms,1,1.1), (billeksah-pane,1,1.1),
+               (leksah-dummy,1.0,1.1), (leksah-main,1,1.1),
+               (leksah-plugin-pane,1,1.1)]
+Synopsis:      Jutaros config 
+				

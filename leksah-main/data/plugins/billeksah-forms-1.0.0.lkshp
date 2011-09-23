@@ -1,10 +1,10 @@
 Name of the plugin:
-               "billeksah-forms"
+               billeksah-forms
 Version:       1.0.0
-Module:        "Graphics.Forms.Description"
-Interface:     "formsPluginInterface"
+Module:        Graphics.Forms.Description
+Interface:     formsPluginInterface
 Prerequisite list:
                []
-     --Plugin root pathes in the form ["p1","p2"]
-Synopsis:      ""
+     --Plugin root pathes in the form [p1,p2]
+Synopsis:      
      --or call it comment

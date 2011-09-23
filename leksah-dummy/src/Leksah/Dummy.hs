@@ -18,6 +18,7 @@ module Leksah.Dummy where
 import Base
 import Leksah
 import Graphics.Pane
+import Graphics.Forms.Basics
 
 import Graphics.UI.Gtk
 import Data.Typeable (Typeable)
@@ -25,6 +26,10 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.IORef (newIORef)
 import qualified Data.Map as Map (empty)
 import Data.Version (Version(..))
+import Graphics.Forms.Description (mkField)
+import Graphics.Forms.Parameters ((<<<), defaultParams, ParaType(ParaString))
+import qualified Text.PrettyPrint as PP (text)
+import Graphics.Forms.Simple (stringEditor)
 
 -- ----------------------------------------------
 -- | It's a plugin
@@ -67,6 +72,9 @@ getDummyEvent = getEvent DummySel
 -- -----------------------------------------------
 -- * Initialization
 --
+data DummyPrefs = DummyPrefs {
+    dummyArg :: String}
+    deriving (Eq,Typeable)
 
 dummyInit1 :: BaseEvent -> PEvent DummyEvent -> StateM ()
 dummyInit1 baseEvent myEvent = message Debug  ("init1 " ++ pluginName) >> return ()
@@ -75,6 +83,25 @@ dummyInit2 :: BaseEvent -> PEvent DummyEvent -> StateM ()
 dummyInit2 baseEvent myEvent = do
     message Debug  ("init2 " ++ pluginName)
     getFrameEvent >>= \ev -> registerEvent ev frameEventHandler >> return ()
+    getFormsEvent >>= \ev -> registerEvent ev dummyEventHandler >> return ()
+
+dummyEventHandler (RegisterPrefs prefs) = return (RegisterPrefs $ prefs ++
+    [("Dummy",GenF dummyPrefsDescr defaultDummyPrefs)])
+dummyEventHandler other                     = return other
+
+dummyPrefsDescr :: FieldDescription DummyPrefs
+dummyPrefsDescr =
+    VertBox defaultParams [
+      mkField
+            (("Name", ParaString "Dummy arg") <<< defaultParams)
+            stringPrinter
+            stringParser
+            dummyArg
+            (\b a -> a{dummyArg = b})
+            (stringEditor (const True) True)
+            (\_i -> return ())]
+
+defaultDummyPrefs =  DummyPrefs "Just a dummy"
 
 frameEventHandler (RegisterActions actions) = return (RegisterActions $ actions ++ myActions)
 frameEventHandler (RegisterPane paneTypes)  = return (RegisterPane $ paneTypes ++ myPaneTypes)
@@ -133,5 +160,6 @@ buildDummy panePath notebook window = do
 
 dummyAction = do
     state <- saveSession
+    message Debug state
     recoverSession state
 

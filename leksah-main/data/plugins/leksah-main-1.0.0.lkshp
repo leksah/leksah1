@@ -1,10 +1,9 @@
 Name of the plugin:
-               "leksah-main"
+               leksah-main
 Version:       1.0.0
-Module:        "Leksah"
-Interface:     "leksahPluginInterface"
+Module:        Leksah
+Interface:     leksahPluginInterface
 Prerequisite list:
                [(billeksah-pane,1.0,1.0)]
-     --Plugin root pathes in the form ["p1","p2"]
-Synopsis:      ""
+Synopsis:      
      --or call it comment

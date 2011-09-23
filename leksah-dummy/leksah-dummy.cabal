@@ -35,5 +35,6 @@ Library
 
         billeksah-services >= 1.0.0 && < 1.1,
         billeksah-pane >= 1.0.0 && < 1.1,
+        billeksah-forms >= 1.0.0 && < 1.1,
         leksah-main >= 1.0.0 && < 1.1
 

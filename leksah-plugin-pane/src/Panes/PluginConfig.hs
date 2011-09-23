@@ -22,7 +22,7 @@ import Leksah
 import Panes.Plugin
 
 import Graphics.UI.Gtk hiding (eventClick)
-import Data.Typeable (Typeable(..), cast, Typeable)
+import Data.Typeable (Typeable(..), Typeable)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.IORef (writeIORef, readIORef, newIORef)
 import qualified Data.Map as Map (empty)
@@ -216,12 +216,9 @@ buildPluginConfigPane = \ pp nb w -> do
     handlers = [([Selection],(\ event ->
                 case geMbSelection event of
                     Nothing -> return event
-                    Just (GenSelection sel) -> case cast sel of
-                                                    Nothing -> do
-                                                        message Error ("cPluginConfig>>buildPluginConfigPane:" ++
-                                                         " cast problem")
-                                                        return event
-                                                    Just s -> do
-                                                        openPluginPane s
-                                                        return event))]
+                    Just (GenSelection sel) ->
+                        let s = myCast "cPluginConfig>>buildPluginConfigPane:" sel
+                        in do
+                            openPluginPane s
+                            return event))]
     newButton = ("gtk-new",openPluginPane' defaultPlugin)

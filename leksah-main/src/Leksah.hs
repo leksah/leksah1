@@ -22,6 +22,7 @@ module Leksah (
 
 import Base
 import Graphics.Pane
+import Graphics.Forms.Description
 
 import Data.Version (showVersion, Version(..))
 import Data.IORef (newIORef, IORef)
@@ -106,7 +107,9 @@ myActions =
 --
 
 startupLeksah :: StateAction
-startupLeksah = startupFrame "Leksah main" beforeMainGUI
+startupLeksah = do
+    initPrefs
+    startupFrame "Leksah main" beforeMainGUI
 
 beforeMainGUI win vb nb = do
     postAsyncState (triggerLeksahEvent Started >> return ())

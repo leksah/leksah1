@@ -34,6 +34,7 @@ Library
         filepath >= 1.2.0.0 && < 1.3,
 
         billeksah-services >= 1.0.0 && < 1.1,
-        billeksah-pane >= 1.0.0 && < 1.1
+        billeksah-pane >= 1.0.0 && < 1.1,
+        billeksah-forms >= 1.0.0 && < 1.1
 
 

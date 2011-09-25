@@ -22,7 +22,7 @@ module Leksah (
 
 import Base
 import Graphics.Pane
-import Graphics.Forms.Description
+import Graphics.Forms
 
 import Data.Version (showVersion, Version(..))
 import Data.IORef (newIORef, IORef)

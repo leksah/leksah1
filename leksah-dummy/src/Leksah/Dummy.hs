@@ -18,7 +18,7 @@ module Leksah.Dummy where
 import Base
 import Leksah
 import Graphics.Pane
-import Graphics.Forms.Basics
+import Graphics.Forms
 
 import Graphics.UI.Gtk
 import Data.Typeable (Typeable)
@@ -26,10 +26,8 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.IORef (newIORef)
 import qualified Data.Map as Map (empty)
 import Data.Version (Version(..))
-import Graphics.Forms.Description (mkField)
-import Graphics.Forms.Parameters ((<<<), defaultParams, ParaType(ParaString))
 import qualified Text.PrettyPrint as PP (text)
-import Graphics.Forms.Simple (stringEditor)
+
 
 -- ----------------------------------------------
 -- | It's a plugin

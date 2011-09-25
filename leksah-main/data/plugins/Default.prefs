@@ -1,0 +1,9 @@
+[Frame]
+Categories for panes:
+               [("a","b"),("c","d")]
+Pane path for category:
+               [("b",[SplitP RightP])]
+Default pane path:
+               [SplitP LeftP]
+[Dummy]
+Dummy arg:     Test5

@@ -38,7 +38,7 @@ data DummySel = DummySel
     deriving(Typeable, Show, Ord, Eq)
 
 instance Selector DummySel where
-    type ValueType DummySel = PEvent DummyEvent
+    type ValueType DummySel = EventChannel DummyEvent
 
 dummyPluginInterface :: StateM (PluginInterface DummyEvent)
 dummyPluginInterface = do
@@ -60,7 +60,7 @@ data DummyEvent = HelloWorld
 triggerDummyEvent :: DummyEvent -> StateM (DummyEvent)
 triggerDummyEvent = triggerEvent DummySel
 
-getDummyEvent :: StateM (PEvent DummyEvent)
+getDummyEvent :: StateM (EventChannel DummyEvent)
 getDummyEvent = getEvent DummySel
 
 -- -----------------------------------------------
@@ -70,10 +70,10 @@ data DummyPrefs = DummyPrefs {
     dummyArg :: String}
     deriving (Eq,Typeable)
 
-dummyInit1 :: BaseEvent -> PEvent DummyEvent -> StateM ()
+dummyInit1 :: BaseEvent -> EventChannel DummyEvent -> StateM ()
 dummyInit1 baseEvent myEvent = message Debug  ("init1 " ++ pluginName) >> return ()
 
-dummyInit2 :: BaseEvent -> PEvent DummyEvent -> StateM ()
+dummyInit2 :: BaseEvent -> EventChannel DummyEvent -> StateM ()
 dummyInit2 baseEvent myEvent = do
     message Debug  ("init2 " ++ pluginName)
     getFrameEvent >>= \ev -> registerEvent ev frameEventHandler >> return ()

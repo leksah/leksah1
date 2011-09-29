@@ -47,7 +47,7 @@ data LeksahEventSel = LeksahEventSel
     deriving (Eq,Ord,Show,Typeable)
 
 instance Selector LeksahEventSel where
-    type ValueType LeksahEventSel = PEvent LeksahEvent
+    type ValueType LeksahEventSel = EventChannel LeksahEvent
 
 --
 -- | Events the gui frame triggers
@@ -58,7 +58,7 @@ data LeksahEvent = Started
 triggerLeksahEvent :: LeksahEvent -> StateM(LeksahEvent)
 triggerLeksahEvent = triggerEvent LeksahEventSel
 
-getLeksahEvent :: StateM (PEvent LeksahEvent)
+getLeksahEvent :: StateM (EventChannel LeksahEvent)
 getLeksahEvent = getEvent LeksahEventSel
 
 leksahPluginInterface :: StateM (PluginInterface LeksahEvent)
@@ -74,10 +74,10 @@ leksahPluginInterface = do
 data LeksahPrefs = LeksahPrefs
     -- TODO: Preferences plugin
 
-leksahInit1 :: BaseEvent -> PEvent LeksahEvent -> StateM ()
+leksahInit1 :: BaseEvent -> EventChannel LeksahEvent -> StateM ()
 leksahInit1 baseEvent myEvent = message Debug ("init1 " ++ pluginName) >> return ()
 
-leksahInit2 :: BaseEvent -> PEvent LeksahEvent -> StateM ()
+leksahInit2 :: BaseEvent -> EventChannel LeksahEvent -> StateM ()
 leksahInit2 baseEvent myEvent = do
     message Debug ("init2 " ++ pluginName)
     registerEvent' baseEvent (\ e -> case e of

@@ -43,7 +43,7 @@ data LeksahPluginPaneSel = LeksahPluginPaneSel
     deriving (Eq,Ord,Show,Typeable)
 
 instance Selector LeksahPluginPaneSel where
-    type ValueType LeksahPluginPaneSel = PEvent PluginPaneEvent
+    type ValueType LeksahPluginPaneSel = EventChannel PluginPaneEvent
 
 data PluginPaneEvent = PluginConfigChanged | PluginDescrChanged
         deriving (Eq, Show)
@@ -51,7 +51,7 @@ data PluginPaneEvent = PluginConfigChanged | PluginDescrChanged
 triggerPluginPane :: PluginPaneEvent -> StateM (PluginPaneEvent)
 triggerPluginPane = triggerEvent LeksahPluginPaneSel
 
-getPluginPaneEvent :: StateM (PEvent PluginPaneEvent)
+getPluginPaneEvent :: StateM (EventChannel PluginPaneEvent)
 getPluginPaneEvent = getEvent LeksahPluginPaneSel
 
 

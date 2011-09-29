@@ -54,10 +54,10 @@ pluginPanePluginInterface = do
 -- * Initialization
 --
 
-init1 :: BaseEvent -> PEvent PluginPaneEvent -> StateM ()
+init1 :: BaseEvent -> EventChannel PluginPaneEvent -> StateM ()
 init1 baseEvent myEvent = message Debug ("init1 " ++ pluginName) >> return ()
 
-init2 :: BaseEvent -> PEvent PluginPaneEvent -> StateM ()
+init2 :: BaseEvent -> EventChannel PluginPaneEvent -> StateM ()
 init2 baseEvent myEvent = do
     message Debug ("init2 " ++ pluginName)
     registerFrameEvent handler >> return ()

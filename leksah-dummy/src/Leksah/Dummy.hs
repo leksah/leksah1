@@ -40,10 +40,6 @@ data DummySel = DummySel
 instance Selector DummySel where
     type ValueType DummySel = PEvent DummyEvent
 
-instance EventSelector DummySel where
-    type BaseType DummySel = DummyEvent
-
-
 dummyPluginInterface :: StateM (PluginInterface DummyEvent)
 dummyPluginInterface = do
     fe <- makeEvent DummySel

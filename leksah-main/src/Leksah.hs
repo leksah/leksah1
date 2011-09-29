@@ -49,9 +49,6 @@ data LeksahEventSel = LeksahEventSel
 instance Selector LeksahEventSel where
     type ValueType LeksahEventSel = PEvent LeksahEvent
 
-instance EventSelector LeksahEventSel where
-    type BaseType LeksahEventSel = LeksahEvent
-
 --
 -- | Events the gui frame triggers
 --

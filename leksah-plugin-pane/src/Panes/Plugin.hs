@@ -45,10 +45,6 @@ data LeksahPluginPaneSel = LeksahPluginPaneSel
 instance Selector LeksahPluginPaneSel where
     type ValueType LeksahPluginPaneSel = PEvent PluginPaneEvent
 
-instance EventSelector LeksahPluginPaneSel where
-    type BaseType LeksahPluginPaneSel = PluginPaneEvent
-
-
 data PluginPaneEvent = PluginConfigChanged | PluginDescrChanged
         deriving (Eq, Show)
 

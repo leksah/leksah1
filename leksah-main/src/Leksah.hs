@@ -18,6 +18,11 @@ module Leksah (
     , LeksahEvent(..)
     , getLeksahEvent
     , triggerLeksahEvent
+
+-- * Renaming
+    , IDEM
+    , IDEAction
+    , reflectIDE
 ) where
 
 import Base
@@ -36,6 +41,10 @@ import Paths_leksah_main
 import Control.Exception (catch, SomeException)
 import System.FilePath((</>))
 import Prelude hiding(catch)
+
+type IDEM = StateM
+type IDEAction = StateAction
+reflectIDE = reflectState
 
 -- ------------------------------------------------
 -- * It's a plugin
@@ -124,7 +133,7 @@ aboutDialog = do
     aboutDialogSetComments d $ "An integrated development environement (IDE) for the " ++
                                "programming language Haskell and the Glasgow Haskell Compiler"
     dd <- getDataDir
-    license <- catch (readFile $ dd </> "LICENSE") (\ (_ :: SomeException) -> return "")
+    license <- catch(readFile $ dd </> "LICENSE") (\ (_ :: SomeException) -> return "")
     aboutDialogSetLicense d $ Just license
     aboutDialogSetWebsite d "http://leksah.org/"
     aboutDialogSetAuthors d ["Jürgen Nicklisch-Franken","Hamish Mackenzie"]

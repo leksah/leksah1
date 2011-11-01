@@ -62,13 +62,15 @@ getPluginPaneEvent = getEvent LeksahPluginPaneSel
 data PluginPane = PluginPane {
     ppTop :: VBox,
     ppInj :: Injector Plugin,
-    ppExt :: Extractor Plugin
+    ppExt :: Extractor Plugin,
+    ppEvent :: GEvent
 } deriving (Typeable)
 
 
 instance PaneInterface PluginPane  where
     data PaneState PluginPane =  PPState (Maybe Plugin)
             deriving(Read,Show)
+    type PaneArgs PluginPane = ()
 
     getTopWidget    =  \ p   -> castToWidget (ppTop p)
     primPaneName    =  \ dp  -> "Plugin"
@@ -78,7 +80,7 @@ instance PaneInterface PluginPane  where
         return $ Just (PPState mbVal)
     recoverState    =  \ pp ps -> do
         nb      <-  getNotebook pp
-        mbP     <-  buildPane pp nb builder
+        mbP     <-  buildPanePrim pp nb (builder ())
         case mbP of
             Nothing -> return Nothing
             Just p  -> case ps of
@@ -97,7 +99,7 @@ openPluginPane (name,bounds) = do
     case res of
         Right errorStr  ->  message Error ("Can't find plugin: " ++ errorStr)
         Left plugin     -> do
-            pane :: Maybe PluginPane <- getOrBuildDisplay (Left []) True
+            pane :: Maybe PluginPane <- getOrBuildDisplay (Left []) True ()
             case pane of
                 Nothing -> return ()
                 Just p -> do
@@ -109,7 +111,7 @@ openPluginPane' plugin = do
     currentConfigPath <- liftM dropFileName getCurrentConfigPath
     choices           <- liftIO $ getPrereqChoices (dropFileName currentConfigPath)
     let choices' = filter (\ (n,_) -> n /= (plName plugin)) choices
-    pane :: Maybe PluginPane <- getOrBuildDisplay (Left []) True
+    pane :: Maybe PluginPane <- getOrBuildDisplay (Left []) True ()
     case pane of
         Nothing -> return ()
         Just p -> do
@@ -167,18 +169,44 @@ pluginDescr = VertBoxG defaultParams [
 
 prerequisitesEditor mbDeleteHandler =
     selectionEditor
-        (ColumnDescr True
-            [("Plugin",\ (pluginName',(_,_)) -> [cellText := pluginName'],Nothing),
-            ("Lower",\ (_,(lower,_)) -> [cellText := showMbVersion lower],
-                Just (\ row@(pn,(lower,upper)) str ->
-                    case parse boundParser "" str of
-                        Left _  ->  row
-                        Right v ->  (pn,(v,upper)))),
-            ("Upper",\ (_,(_,upper)) -> [cellText := showMbVersion upper],
-                Just (\ old@(pn,(lower,upper)) str ->
-                    case parse boundParser "" str of
-                        Left _  -> old
-                        Right v ->  (pn,(lower,v))))])
+        (ColumnsDescr True [
+            ColumnDescr{
+                tcdLabel = "Plugin",
+                tcdRenderer = cellRendererTextNew,
+                tcdRenderFunc = \ (pluginName',(_,_)) -> [cellText := pluginName'],
+                tcdMbEditFunc = Nothing},
+            ColumnDescr{
+                tcdLabel = "Lower",
+                tcdRenderer = cellRendererTextNew,
+                tcdRenderFunc = \ (_,(lower,_)) -> [cellText := showMbVersion lower],
+                tcdMbEditFunc = Just (\ renderer listStore notifier stateR -> do
+                                        set renderer [cellTextEditable := True]
+                                        on renderer edited (\ (p:_) str ->  do
+                                            row@(pn,(lower,upper)) <- listStoreGetValue listStore p
+                                            let newRow = case parse boundParser "" str of
+                                                            Left _  ->  row
+                                                            Right v ->  (pn,(v,upper))
+                                            listStoreSetValue listStore p newRow
+                                            reflectState (triggerGUIEvent notifier
+                                                dummyGUIEvent {geSelector = MayHaveChanged}) stateR
+                                            return ())
+                                        return ())},
+            ColumnDescr{
+                tcdLabel = "Upper",
+                tcdRenderer = cellRendererTextNew,
+                tcdRenderFunc = \ (_,(_,upper)) -> [cellText := showMbVersion upper],
+                tcdMbEditFunc = Just (\ renderer listStore notifier stateR -> do
+                                        set renderer [cellTextEditable := True]
+                                        on renderer edited (\ (p:_) str ->  do
+                                            row@(pn,(lower,upper)) <- listStoreGetValue listStore p
+                                            let newRow = case parse boundParser "" str of
+                                                            Left _  ->  row
+                                                            Right v ->  (pn,(lower,v))
+                                            listStoreSetValue listStore p newRow
+                                            reflectState (triggerGUIEvent notifier
+                                                dummyGUIEvent {geSelector = MayHaveChanged}) stateR
+                                            return ())
+                                        return ())}])
         (Just (\ (pluginName1,_) (pluginName2,_) -> compare pluginName1 pluginName2))
         (Just (\ (pluginName1,_) (pluginName2,_) -> pluginName1 == pluginName2))
         mbDeleteHandler
@@ -190,8 +218,8 @@ prerequisitesEditor mbDeleteHandler =
 -- * Building the forms pane in standard form
 --
 
-buildPluginPane :: PanePath -> Notebook -> Window -> StateM (Maybe PluginPane, Connections)
-buildPluginPane = \ pp nb w -> makeValue >>= \ initial ->
+buildPluginPane :: () -> PanePath -> Notebook -> Window -> StateM (Maybe PluginPane, Connections)
+buildPluginPane _ pp nb w =  makeValue >>= \ initial ->
                     (buildFormsPane pluginDescr initial formPaneDescr) pp nb w
 
   where
@@ -202,7 +230,7 @@ buildPluginPane = \ pp nb w -> makeValue >>= \ initial ->
         return defaultPlugin{plChoices = choices}
 
     formPaneDescr :: FormPaneDescr Plugin PluginPane = FormPaneDescr {
-        fpGetPane      = \ top inj ext -> PluginPane top inj ext,
+        fpGetPane      = \ top inj ext gevent -> PluginPane top inj ext gevent,
         fpSaveAction   = \ v ->  do
                                     currentConfigPath <- getCurrentConfigPath
                                     liftIO $ writePluginDescr (dropFileName currentConfigPath

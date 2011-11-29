@@ -115,7 +115,9 @@ myActions =
 startupLeksah :: StateAction
 startupLeksah = do
     initPrefs
-    startupFrame "Leksah main" beforeMainGUI
+    startupFrame "Leksah main" beforeWindowOpen beforeMainGUI
+
+beforeWindowOpen win vb nb = return ()
 
 beforeMainGUI win vb nb = do
     postAsyncState (triggerLeksahEvent Started >> return ())

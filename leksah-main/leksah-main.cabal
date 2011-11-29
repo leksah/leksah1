@@ -19,6 +19,7 @@ data-files: LICENSE
 Library
     exposed-modules:
         Leksah
+        Graphics.MyMissingGtk
     other-modules:
         Paths_leksah_main
     exposed: True

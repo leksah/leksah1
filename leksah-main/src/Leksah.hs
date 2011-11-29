@@ -18,6 +18,11 @@ module Leksah (
     , LeksahEvent(..)
     , getLeksahEvent
     , triggerLeksahEvent
+
+-- * Renaming
+    , IDEM
+    , IDEAction
+    , reflectIDE
 ) where
 
 import Base
@@ -36,6 +41,10 @@ import Paths_leksah_main
 import Control.Exception (catch, SomeException)
 import System.FilePath((</>))
 import Prelude hiding(catch)
+
+type IDEM = StateM
+type IDEAction = StateAction
+reflectIDE = reflectState
 
 -- ------------------------------------------------
 -- * It's a plugin

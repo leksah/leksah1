@@ -115,7 +115,9 @@ myActions =
 startupLeksah :: StateAction
 startupLeksah = do
     initPrefs
-    startupFrame "Leksah main" beforeMainGUI
+    startupFrame "Leksah main" beforeWindowOpen beforeMainGUI
+
+beforeWindowOpen win vb nb = return ()
 
 beforeMainGUI win vb nb = do
     postAsyncState (triggerLeksahEvent Started >> return ())
@@ -133,7 +135,7 @@ aboutDialog = do
     aboutDialogSetComments d $ "An integrated development environement (IDE) for the " ++
                                "programming language Haskell and the Glasgow Haskell Compiler"
     dd <- getDataDir
-    license <- catch (readFile $ dd </> "LICENSE") (\ (_ :: SomeException) -> return "")
+    license <- catch(readFile $ dd </> "LICENSE") (\ (_ :: SomeException) -> return "")
     aboutDialogSetLicense d $ Just license
     aboutDialogSetWebsite d "http://leksah.org/"
     aboutDialogSetAuthors d ["Jürgen Nicklisch-Franken","Hamish Mackenzie"]

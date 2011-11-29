@@ -117,7 +117,7 @@ mySessionExt = [GenS (SessionExtension "dummy" (return 5)
                     (\ i -> liftIO $ putStrLn ("recovery2 " ++ show (i + 0.1))))]
 
 openDummy :: StateM ()
-openDummy = (getOrBuildDisplay (Left []) True  :: StateM (Maybe DummyPane)) >> return ()
+openDummy = (getOrBuildDisplay (Left []) True ()  :: StateM (Maybe DummyPane)) >> return ()
 
 -- ----------------------------------------------
 -- * It's a pane
@@ -133,6 +133,7 @@ data DummyPaneState              =   DPState
 instance PaneInterface DummyPane  where
     data PaneState DummyPane =  DummyPaneState
             deriving(Eq,Ord,Read,Show)
+    type PaneArgs DummyPane = ()
     getTopWidget    =  \ p   -> castToWidget (sw p)
     primPaneName    =  \ dp  -> "Dummy"
     paneType        =  \ _   -> "**Dummy"
@@ -142,7 +143,7 @@ instance PaneInterface DummyPane  where
 
 instance Pane DummyPane
 
-buildDummy panePath notebook window = do
+buildDummy _ panePath notebook window = do
     reifyState $ \ stateR -> do
         ibox        <- vBoxNew False 0
         button      <- buttonNew

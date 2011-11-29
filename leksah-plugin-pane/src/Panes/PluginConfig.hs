@@ -78,7 +78,7 @@ myPaneTypes =
 openPluginConfigPane :: StateM ()
 openPluginConfigPane = do
     message Debug "Open plugin config pane"
-    mbPane :: Maybe PluginConfigPane <- getOrBuildDisplay (Left []) True
+    mbPane :: Maybe PluginConfigPane <- getOrBuildDisplay (Left []) True ()
     case mbPane of
         Nothing -> return ()
         Just p -> registerRefresh p >> return ()
@@ -106,13 +106,15 @@ registerRefresh pane = getPluginPaneEvent >>= (\e -> registerEvent' e handler)
 data PluginConfigPane = PluginConfigPane {
     pcpTopW             ::   VBox,
     pcpInj              :: Injector PluginConfig,
-    pcpExt              :: Extractor PluginConfig
+    pcpExt              :: Extractor PluginConfig,
+    pcpEvent            :: GEvent
 } deriving Typeable
 
 
 instance PaneInterface PluginConfigPane where
     data PaneState PluginConfigPane =  PCPaneState
             deriving(Read,Show)
+    type PaneArgs PluginConfigPane = ()
 
     getTopWidget    =  \ p   -> castToWidget (pcpTopW p)
     primPaneName    =  \ dp  -> "PluginConfig"
@@ -120,7 +122,7 @@ instance PaneInterface PluginConfigPane where
     saveState       =  \ s   -> return $ Just (PCPaneState)
     recoverState    =  \ pp ps -> do
         nb      <-  getNotebook pp
-        mbP     <-  buildPane pp nb builder
+        mbP     <-  buildPanePrim pp nb (builder ())
         return mbP
     builder         =  buildPluginConfigPane
 
@@ -191,9 +193,9 @@ deleteHandler' currentConfigPath (name,bounds) = do
 -- ----------------------------------------------
 -- * Building the pane in standard form
 --
-buildPluginConfigPane :: PanePath -> Notebook -> Window
+buildPluginConfigPane :: () -> PanePath -> Notebook -> Window
                             -> StateM (Maybe PluginConfigPane, Connections)
-buildPluginConfigPane = \ pp nb w -> do
+buildPluginConfigPane _ pp nb w = do
     initialValue <-  makeValue
     (buildFormsPane pluginConfDescr initialValue formPaneDescr) pp nb w
   where
@@ -204,7 +206,7 @@ buildPluginConfigPane = \ pp nb w -> do
         return $ pluginConfig{cfChoices = prerequisites ++ cfPlugins pluginConfig}
     formPaneDescr :: FormPaneDescr PluginConfig PluginConfigPane =
         FormPaneDescr {
-            fpGetPane      = \ top inj ext -> PluginConfigPane top inj ext,
+            fpGetPane      = PluginConfigPane,
             fpSaveAction   = \ v -> do
                 currentConfigPath <- getCurrentConfigPath
                 liftIO $ writePluginConfig currentConfigPath v

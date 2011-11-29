@@ -15,6 +15,15 @@ category: IDE
 author: Juergen "jutaro" Nicklisch-Franken
 tested-with: GHC ==7.0
 data-files: LICENSE
+            data/plugins/billeksah-forms-1.0.0.lkshp
+            data/plugins/billeksah-pane-1.0.0.lkshp
+            data/plugins/Default.prefs
+            data/plugins/leksah.lkshc
+            data/plugins/leksah-dummy-1.0.0.lkshp
+            data/plugins/leksah-main-1.0.0.lkshp
+            data/plugins/leksah-plugin-pane-1.0.0.lkshp
+data-dir: ""
+
 
 Library
     exposed-modules:

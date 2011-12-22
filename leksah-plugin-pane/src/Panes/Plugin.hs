@@ -99,7 +99,7 @@ openPluginPane (name,bounds) = do
     case res of
         Right errorStr  ->  message Error ("Can't find plugin: " ++ errorStr)
         Left plugin     -> do
-            pane :: Maybe PluginPane <- getOrBuildDisplay (Left []) True ()
+            pane :: Maybe PluginPane <- getOrBuildDisplay Nothing True ()
             case pane of
                 Nothing -> return ()
                 Just p -> do
@@ -111,7 +111,7 @@ openPluginPane' plugin = do
     currentConfigPath <- liftM dropFileName getCurrentConfigPath
     choices           <- liftIO $ getPrereqChoices (dropFileName currentConfigPath)
     let choices' = filter (\ (n,_) -> n /= (plName plugin)) choices
-    pane :: Maybe PluginPane <- getOrBuildDisplay (Left []) True ()
+    pane :: Maybe PluginPane <- getOrBuildDisplay Nothing True ()
     case pane of
         Nothing -> return ()
         Just p -> do

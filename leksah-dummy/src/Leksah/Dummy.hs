@@ -117,7 +117,7 @@ mySessionExt = [GenS (SessionExtension "dummy" (return 5)
                     (\ i -> liftIO $ putStrLn ("recovery2 " ++ show (i + 0.1))))]
 
 openDummy :: StateM ()
-openDummy = (getOrBuildDisplay (Left []) True ()  :: StateM (Maybe DummyPane)) >> return ()
+openDummy = (getOrBuildDisplay Nothing True ()  :: StateM (Maybe DummyPane)) >> return ()
 
 -- ----------------------------------------------
 -- * It's a pane

@@ -78,7 +78,7 @@ myPaneTypes =
 openPluginConfigPane :: StateM ()
 openPluginConfigPane = do
     message Debug "Open plugin config pane"
-    mbPane :: Maybe PluginConfigPane <- getOrBuildDisplay (Left []) True ()
+    mbPane :: Maybe PluginConfigPane <- getOrBuildDisplay Nothing True ()
     case mbPane of
         Nothing -> return ()
         Just p -> registerRefresh p >> return ()

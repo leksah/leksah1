@@ -1,4 +1,4 @@
-{-# Language TypeSynonymInstances, TypeFamilies #-}
+{-# Language TypeSynonymInstances, TypeFamilies, DeriveDataTypeable #-}
 
 -----------------------------------------------------------------------------
 --
@@ -36,12 +36,14 @@ import qualified Graphics.UI.Gtk.Multiline.TextView as Gtk
 import qualified Graphics.UI.Gtk.Gdk.Events as GtkOld
 import System.Glib.Attributes (AttrOp(..))
 import System.Glib.Signals (ConnectId(..))
+import Data.Typeable
 -- import System.GIO.File.ContentType (contentTypeGuess)
 
 import System.FilePath ((</>))
 import Graphics.Pane (Connection)
 
 data GtkSourceView = GtkSourceView
+    deriving Typeable
 
 -- Data types
 instance TextEditorBackend GtkSourceView where

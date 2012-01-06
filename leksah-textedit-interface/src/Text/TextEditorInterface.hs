@@ -20,13 +20,14 @@ module Text.TextEditorInterface (
 import Base
 import Leksah (IDEM)
 import Graphics.Pane (Connection)
+import Data.Typeable (Typeable)
 
 
 --
 -- | The interface to a text editor backend
 --
 
-class TextEditorBackend alpha where
+class Typeable alpha => TextEditorBackend alpha where
     data EditorBuffer alpha :: *
     data EditorView alpha :: *
     data EditorMark alpha :: *
@@ -112,7 +113,7 @@ class TextEditorBackend alpha where
     setStyle               :: EditorBuffer alpha -> Maybe String -> IDEM ()
     setText                :: EditorBuffer alpha -> String -> IDEM ()
     undo                   :: EditorBuffer alpha -> IDEM ()
--- * View
+--  View
     bufferToWindowCoords  ::  EditorView alpha -> (Int, Int) -> IDEM (Int, Int)
     drawTabs              ::  EditorView alpha -> IDEM ()
     getBuffer             ::  EditorView alpha -> IDEM (EditorBuffer alpha)
@@ -137,7 +138,7 @@ class TextEditorBackend alpha where
     setRightMargin        ::  EditorView alpha -> Maybe Int -> IDEM ()
     setShowLineNumbers    ::  EditorView alpha -> Bool -> IDEM ()
     setTabWidth           ::  EditorView alpha -> Int -> IDEM ()
--- * Iter
+-- Iter
     backwardCharC         ::  EditorIter alpha -> IDEM (EditorIter alpha)
     backwardFindCharC     ::  EditorIter alpha
                     -> (Char -> Bool)
@@ -173,12 +174,12 @@ class TextEditorBackend alpha where
     atLineOffset          ::  EditorIter alpha -> Int -> IDEM (EditorIter alpha)
     atOffset              ::  EditorIter alpha -> Int -> IDEM (EditorIter alpha)
     atStart               ::  EditorIter alpha -> IDEM (EditorIter alpha)
--- * Tags
+-- Tags
     newTag                :: EditorTagTable alpha -> String -> IDEM (EditorTag alpha)
     lookupTag             :: EditorTagTable alpha -> String -> IDEM (Maybe (EditorTag alpha))
     background            :: EditorTag alpha -> EditorColor alpha -> IDEM ()
     underline             :: EditorTag alpha -> EditorUnderline alpha -> IDEM ()
--- * Events
+-- Events
     afterFocusIn          ::  EditorView alpha -> IDEM () -> IDEM [Connection]
     afterModifiedChanged  :: EditorBuffer alpha-> IDEM () -> IDEM [Connection]
     afterMoveCursor       ::  EditorView alpha -> IDEM () -> IDEM [Connection]

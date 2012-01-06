@@ -1,0 +1,33 @@
+name: leksah-textedit
+version: 1.0.0
+cabal-version: >=1.8
+build-type: Simple
+license: GPL
+license-file: LICENSE
+copyright: Juergen "jutaro" Nicklisch-Franken
+maintainer: maintainer@leksah.org
+homepage: http://www.leksah.org
+package-url: https://github.com/leksah
+bug-reports: http://code.google.com/p/leksah/issues/list
+synopsis: The text editor for leksah
+description: Text Editor
+category: IDE
+author: Juergen "jutaro" Nicklisch-Franken
+tested-with: GHC ==7.0
+data-dir: ""
+ 
+library
+    build-depends: Cabal -any, base >=4.0.0.0 && <4.4,
+                   billeksah-forms >=1.0.0 && <1.1, billeksah-pane >=1.0.0 && <1.1,
+                   billeksah-services >=1.0.0 && <1.1, containers >=0.2 && <0.5,
+                   directory >=1.1.0.0 && <1.2, filepath >=1.2.0.0 && <1.3,
+                   glib >=0.12.0 && <0.13, gtk >=0.12.0 && <0.13,
+                   leksah-main >=1.0.0 && <1.1, leksah-textedit-interface -any,
+                   mtl >=1.1.0.2 && <2.1, old-time -any, parsec >=3.1.1 && <4,
+                   pretty >=1.0.1.0 && <1.1, transformers >=0.2.2.0 && <0.3
+    exposed-modules: Graphics.Pane.TextEditor
+    exposed: True
+    buildable: True
+    hs-source-dirs: src
+    other-modules: Types.TextEditor
+ 

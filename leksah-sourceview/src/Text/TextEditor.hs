@@ -168,6 +168,8 @@ instance TextEditorBackend GtkSourceView where
     onKeyRelease          = onKeyRelease'
     onLookupInfo          = onLookupInfo'
     onPopulatePopup       = onPopulatePopup'
+-- Conversion
+    fromGtkColor          = fromGtkColor'
 
 -- Buffer
 newBuffer' :: Maybe FilePath -> String -> FilePath -> IDEM (EditorBuffer GtkSourceView)
@@ -736,3 +738,5 @@ onPopulatePopup' (GtkEditorView sv) f = do
 #endif
         return [castCID id1]
 
+fromGtkColor' :: Gtk.Color -> EditorColor GtkSourceView
+fromGtkColor' c = GtkEditorColor c

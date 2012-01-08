@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ExistentialQuantification, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  IDE.BufferMode
@@ -18,20 +18,29 @@ module Text.BufferModeInterface where
 import Text.TextEditorInterface
 import Leksah (IDEM, IDEAction)
 
-class BufferMode alpha where
-    modeName               :: alpha -> String
-    modeEditComment        :: alpha -> IDEAction
-    modeEditUncomment      :: alpha -> IDEAction
-    modeSelectedModuleName :: alpha -> IDEM (Maybe String)
-    modeEditToCandy        :: alpha -> (String -> Bool) -> IDEAction
-    modeTransformToCandy   :: forall beta . TextEditorBackend beta =>
-            alpha -> (String -> Bool) -> EditorBuffer beta -> IDEAction
-    modeEditFromCandy      :: alpha -> IDEAction
-    modeEditKeystrokeCandy :: alpha -> Maybe Char -> (String -> Bool) -> IDEAction
-    modeEditInsertCode     :: forall beta . TextEditorBackend beta =>
-            alpha -> String -> EditorIter beta -> EditorBuffer beta -> IDEAction
-    modeEditInCommentOrString :: alpha -> String -> Bool
+data BufferMode beta = BufferMode {
+    bmName               :: String,
+    -- ^ The name of this mode
+    bmEditComment        :: IDEAction,
+    -- ^ Comment out the selected lines
+    bmEditUncomment      :: IDEAction,
+    -- ^ Uncomment the selected lines
+    bmSelectedModuleName :: IDEM (Maybe String),
+    -- ^ Maybe this file offers a module name
+    bmGetRealText :: EditorBuffer beta -> IDEM String
+    -- ^ Get the real text to store
+}
 
+{--
+    bmEditToCandy        :: alpha -> (String -> Bool) -> IDEAction
+    bmTransformToCandy   :: forall beta . TextEditorBackend beta =>
+            alpha -> (String -> Bool) -> EditorBuffer beta -> IDEAction
+    bmEditFromCandy      :: alpha -> IDEAction
+    bmEditKeystrokeCandy :: alpha -> Maybe Char -> (String -> Bool) -> IDEAction
+    bmEditInsertCode     :: forall beta . TextEditorBackend beta =>
+            alpha -> String -> EditorIter beta -> EditorBuffer beta -> IDEAction
+    bmEditInCommentOrString :: alpha -> String -> Bool
+--}
 
 -- * Buffer Basics
 

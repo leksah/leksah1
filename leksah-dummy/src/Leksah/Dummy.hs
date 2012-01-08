@@ -130,7 +130,7 @@ data DummyPane        =   DummyPane {
 data DummyPaneState              =   DPState
     deriving(Eq,Ord,Read,Show)
 
-instance PaneInterface DummyPane  where
+instance PaneInterface DummyPane where
     data PaneState DummyPane =  DummyPaneState
             deriving(Eq,Ord,Read,Show)
     type PaneArgs DummyPane = ()

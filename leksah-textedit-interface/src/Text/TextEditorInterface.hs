@@ -21,6 +21,7 @@ import Base
 import Leksah (IDEM)
 import Graphics.Pane (Connection)
 import Data.Typeable (Typeable)
+import qualified Graphics.UI.Gtk as Gtk (Color(..))
 
 
 --
@@ -28,12 +29,12 @@ import Data.Typeable (Typeable)
 --
 
 class Typeable alpha => TextEditorBackend alpha where
-    data EditorBuffer alpha :: *
-    data EditorView alpha :: *
-    data EditorMark alpha :: *
-    data EditorIter alpha :: *
-    data EditorTagTable alpha :: *
-    data EditorClipboard alpha :: *
+    data EditorBuffer alpha
+    data EditorView alpha
+    data EditorMark alpha
+    data EditorIter alpha
+    data EditorTagTable alpha
+    data EditorClipboard alpha
     data EditorTag alpha
     data EditorDrawWindow alpha
     data EditorRectangle alpha
@@ -199,4 +200,5 @@ class Typeable alpha => TextEditorBackend alpha where
                 -> IDEM [Connection]
     onLookupInfo          ::  EditorView alpha -> IDEM () -> IDEM [Connection]
     onPopulatePopup       ::  EditorView alpha -> (EditorMenu alpha -> IDEM ()) -> IDEM [Connection]
-
+-- Conversion
+    fromGtkColor          ::  Gtk.Color -> EditorColor alpha

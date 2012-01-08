@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, RankNTypes, DeriveDataTypeable  #-}
+{-# LANGUAGE TypeFamilies, RankNTypes, DeriveDataTypeable, CPP  #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Graphics.Pane.TextEditor
@@ -14,27 +14,61 @@
 -----------------------------------------------------------------------------------
 
 module Graphics.Pane.TextEditor (
+    allBuffers
+,   IDEBuffer(..)
+    -- File menu
+,   fileNew
+,   fileOpen
+,   fileRevert
+,   fileSave
+,   fileSaveAll
+,   fileClose
+,   fileCloseAll
+    -- Edit menu
+,   editUndo
+,   editRedo
+,   editCut
+,   editCopy
+,   editPaste
+,   editDelete
+,   editSelectAll
+,   editFindInc
+,   editGotoLine
+
+,   editComment
+,   editUncomment
+
+,   align
+
 ) where
 
 import Base
 import Leksah
 import Graphics.Pane
-import Types.TextEditor
 import Text.TextEditorInterface
 import Text.BufferModeInterface
 
-import Graphics.UI.Gtk (ScrolledWindow, idleAdd, castToWidget)
+import qualified Graphics.UI.Gtk as Gtk hiding (eventKeyName)
 import System.FilePath (takeFileName)
 import Control.Monad.IO.Class (MonadIO(..))
 import System.Glib.MainLoop (priorityDefaultIdle)
 import Data.Typeable (Typeable)
 import Data.IORef (IORef)
 import System.Time (ClockTime)
+import qualified System.IO.UTF8 as UTF8
+import System.Directory (getModificationTime)
+import Control.Monad (when)
+import Paths_leksah_textedit
 
 --
--- | A text editor pane description
+-- | Get all open textEditors
 --
+allBuffers :: TextEditorBackend alpha => IDEM [IDEBuffer alpha]
+allBuffers = getPanes
 
+--
+-- | The state of a text editor pane
+--
 data  IDEBuffer alpha = IDEBuffer {
     ibFileName        ::  Maybe FilePath
     -- ^ Maybe a file on disk, which get edited here
@@ -44,32 +78,50 @@ data  IDEBuffer alpha = IDEBuffer {
     -- ^ An added index, if more files with this name are open
 ,   ibSourceView      ::  TextEditorBackend alpha => EditorView alpha
     -- ^ The actual view
-,   ibScrolledWindow  ::  ScrolledWindow
+,   ibScrolledWindow  ::  Gtk.ScrolledWindow
     -- ^ The scrolled window
-,   ibSodTime         ::  IORef (Maybe (ClockTime))
+,   ibSaveTime        ::  IORef (Maybe (ClockTime))
     -- ^ Maybe the last time the file has been saved
-,   ibMode            ::  forall beta . BufferMode beta => beta
+,   ibMode            ::  BufferMode alpha
     -- ^ The editor mode
 } deriving (Typeable)
 
+--
+-- | The arguments for the construction of an editor pane
+--
+data TextEditorArgs alpha = TextEditorArgs {
+    paCondMode     :: Maybe (BufferMode alpha),
+    -- ^ Maybe a mode which should be used, otherwise the mode will be inferred from Filename...
+    paCondFileName :: Maybe FilePath,
+    -- ^ Maybe a file to open
+    paBufferName   :: String,
+    -- ^ The name to use for this buffer
+    paAddedIndex   :: Int
+    -- ^ An index which may be added to the name
+}
 
 --
 -- | A text pane is a pane!
 --
+instance TextEditorBackend alpha => Pane (IDEBuffer alpha)
+
 instance TextEditorBackend alpha => PaneInterface (IDEBuffer alpha) where
     data PaneState (IDEBuffer alpha) =
         BSBufferState {
-        bsFilePath :: String,
-        bsOffset :: Int}
-
-        |    BSBufferStateTrans {
-        bsBufferName :: String,
-        bsContents :: String,
-        bsOffset :: Int}
-
+            bsFilePath :: String,
+            bsOffset :: Int,
+            bsModeName :: String}
+        | BSBufferStateTrans {
+            bsBufferName :: String,
+            bsContents :: String,
+            bsOffset :: Int,
+            bsModeName :: String}
         deriving(Eq,Ord,Read,Show)
-    type PaneArgs (IDEBuffer alpha) = ()
-    getTopWidget    =  \ p   -> castToWidget (ibScrolledWindow p)
+    -- ^ The description of the storable state of a pane
+    type PaneArgs (IDEBuffer alpha) = TextEditorArgs alpha
+    -- ^ The description of the arguments for the pane construction
+
+    getTopWidget    =  \ p   -> Gtk.castToWidget (ibScrolledWindow p)
     primPaneName    =  \ dp  -> "Editor"
     paneType        =  \ _   -> "**Editor"
     saveState p     =   do  buf    <- getBuffer (ibSourceView p)
@@ -78,45 +130,211 @@ instance TextEditorBackend alpha => PaneInterface (IDEBuffer alpha) where
                             offset <- getOffset iter
                             case ibFileName p of
                                 Nothing ->  do
-                                    text    <-  getCandylessText buf
-                                    return (Just (BSBufferStateTrans (ibBufferName p) text offset))
-                                Just fn ->  return (Just (BSBufferState fn offset))
-    recoverState pp (BSBufferState n i) =   do
-        mbbuf    <-  newTextBuffer pp (takeFileName n) (Just n)
+                                    text    <-  bmGetRealText (ibMode p) buf
+                                    return (Just (BSBufferStateTrans{
+                                        bsBufferName = ibBufferName p,
+                                        bsContents   = text,
+                                        bsOffset     = offset,
+                                        bsModeName   = bmName (ibMode p)}))
+                                Just fn ->  return (Just (BSBufferState {
+                                        bsFilePath   = fn,
+                                        bsOffset     = offset,
+                                        bsModeName   = bmName (ibMode p)}))
+    recoverState pp BSBufferState{bsFilePath = fn,bsOffset = offset, bsModeName = modeName} = do
+        mbbuf    <-  newTextBuffer pp (takeFileName fn) (Just fn)
         case mbbuf of
             Just buf -> do
                 gtkBuf  <- getBuffer (ibSourceView buf)
-                iter    <- getIterAtOffset gtkBuf i
+                iter    <- getIterAtOffset gtkBuf offset
                 placeCursor gtkBuf iter
                 mark    <- getInsertMark gtkBuf
                 reifyState (\ stateR ->
-                    liftIO $ idleAdd (do
+                    liftIO $ Gtk.idleAdd (do
                         reflectState (scrollToMark (ibSourceView buf)
                                     mark 0.0 (Just (0.3,0.3))) stateR
                         return False) priorityDefaultIdle)
                 return (Just buf)
             Nothing -> return Nothing
-    recoverState pp (BSBufferStateTrans bn text i) =   do
-        mbbuf    <-  newTextBuffer pp bn Nothing
+    recoverState pp BSBufferStateTrans{bsBufferName = bufferName,
+                                        bsContents   = contents,
+                                        bsOffset     = offset,
+                                        bsModeName   = modeName} =   do
+        mbbuf    <-  newTextBuffer pp bufferName Nothing
         case mbbuf of
             Just buf -> do
                 useCandy <- useCandyFor buf
                 gtkBuf   <-  getBuffer (ibSourceView buf)
-                setText gtkBuf text
+                setText gtkBuf contents
 --                when useCandy $ modeTransformToCandy (mode buf)
 --                                    (modeEditInCommentOrString (mode buf)) gtkBuf
                 setCandyfullText
-                iter     <-  getIterAtOffset gtkBuf i
+                iter     <-  getIterAtOffset gtkBuf offset
                 placeCursor gtkBuf iter
                 mark     <-  getInsertMark gtkBuf
                 reifyState (\ stateR ->
-                    liftIO $ idleAdd (do
+                    liftIO $ Gtk.idleAdd (do
                         reflectState (scrollToMark (ibSourceView buf)
                                     mark 0.0 (Just (0.3,0.3))) stateR
                         return False) priorityDefaultIdle)
                 return (Just buf)
             Nothing -> return Nothing
     builder = builder'
+
+builder'         = undefined
+newTextBuffer    = undefined
+useCandyFor      = undefined
+setCandyfullText = undefined
+
+fileNew          = undefined
+fileOpen         = undefined
+fileRevert       = undefined
+fileSave         = undefined
+fileSaveAll      = undefined
+fileClose        = undefined
+fileCloseAll     = undefined
+-- Edit menu
+editUndo         = undefined
+editRedo         = undefined
+editCut          = undefined
+editCopy         = undefined
+editPaste        = undefined
+editDelete       = undefined
+editSelectAll    = undefined
+editFindInc      = undefined
+editGotoLine     = undefined
+
+editComment      = undefined
+editUncomment    = undefined
+
+align            = undefined
+
+{--
+-- | Build a text editor pane
+builder' :: TextEditorArgs alpha
+    PanePath ->
+    Gtk.Notebook ->
+    Gtk.Window ->
+    StateM (Maybe IDEBuffer,Connections)
+builder' TextEditorArgs {paCondMode = condMode, paCondFileName = mbFileName,
+    paBufferName = bufferName, paAddedIndex = addedIndex} pp nb windows = do
+    -- load up and display a file
+    (fileContents,modTime) <- case mbFileName of
+        Just fn -> do
+            fc <- liftIO $ UTF8.readFile fn
+            mt <- liftIO $ getModificationTime fn
+            return (fc,Just mt)
+        Nothing -> return ("\n",Nothing)
+    dataDir <- getDataDir
+    buffer <- newBuffer mbFileName fileContents dataDir
+    tagTable <- getTagTable buffer
+    foundTag <- newTag tagTable "found"
+    background foundTag $ foundBackground prefs
+
+    beginNotUndoableAction buffer
+    let mod = modFromFileName mbfn
+    when (bs && isHaskellMode mod) $ modeTransformToCandy mod
+                                        (modeEditInCommentOrString mod) buffer
+    endNotUndoableAction buffer
+    setModified buffer False
+    siter <- getStartIter buffer
+    placeCursor buffer siter
+    iter <- getEndIter buffer
+
+    -- create a new SourceView Widget
+    sv <- newView buffer (textviewFont prefs)
+    setShowLineNumbers sv $ showLineNumbers prefs
+    setRightMargin sv $ case rightMargin prefs of
+                            (False,_) -> Nothing
+                            (True,v) -> Just v
+    setIndentWidth sv $ tabWidth prefs
+    setTabWidth sv $ 8 -- GHC treats tabs as 8 we should display them that way
+    drawTabs sv
+    setStyle buffer $ case sourceStyle prefs of
+                        (False,_) -> Nothing
+                        (True,v) -> Just v
+
+    -- put it in a scrolled window
+    sw <- getScrolledWindow sv
+    if wrapLines prefs
+        then liftIO $ scrolledWindowSetPolicy sw PolicyNever PolicyAutomatic
+        else liftIO $ scrolledWindowSetPolicy sw PolicyAutomatic PolicyAutomatic
+    liftIO $ scrolledWindowSetShadowType sw ShadowIn
+    modTimeRef <- liftIO $ newIORef modTime
+    let buf = IDEBuffer {
+        fileName =  mbfn,
+        bufferName = bn,
+        addedIndex = ind,
+        sourceView =sv,
+        scrolledWindow = sw,
+        modTime = modTimeRef,
+        mode = mod}
+    -- events
+    ids1 <- sv `afterFocusIn` makeActive buf
+    ids2 <- onCompletion sv (Completion.complete sv False) Completion.cancel
+    ids3 <- sv `onButtonPress`
+        \event -> do
+            liftIO $ reflectIDE (do
+                case eventClick event of
+                    DoubleClick -> do
+                        (start, end) <- getIdentifierUnderCursor buffer
+                        liftIO $ postGUIAsync $ reflectIDE (selectRange buffer start end) ideR
+                        return False
+                    _ -> return False) ideR
+    (GetTextPopup mbTpm) <- triggerEvent ideR (GetTextPopup Nothing)
+    ids4 <- case mbTpm of
+        Just tpm    -> sv `onPopulatePopup` \menu -> liftIO $ (tpm ideR menu)
+        Nothing     -> do
+            sysMessage Normal "SourceBuffer>> no text popup"
+            return []
+    ids5 <- sv `onKeyPress`
+        \name modifier keyval -> do
+            liftIO $ reflectIDE (do
+                    let moveToNextWord iterOp sel  = do
+                        sel' <- iterOp sel
+                        rs <- isRangeStart sel'
+                        if rs then return sel' else moveToNextWord iterOp sel'
+                    let calculateNewPosition iterOp = getInsertIter buffer >>= moveToNextWord iterOp
+                    let continueSelection keepSelBound nsel = do
+                            im <- getInsertMark buffer
+                            moveMark buffer im nsel
+                            scrollToIter sv nsel 0 Nothing
+                            when (not keepSelBound) $ do
+                                sb <- getSelectionBoundMark buffer
+                                moveMark buffer sb nsel
+#if defined(darwin_HOST_OS)
+                    let mapCommand GtkOld.Alt = GtkOld.Control
+                        mapCommand x = x
+#else
+                    let mapCommand = id
+#endif
+                    case (name, map mapCommand modifier, keyval) of
+                        ("Left",[GtkOld.Control],_) -> do
+                            calculateNewPosition backwardCharC >>= continueSelection False
+                            return True
+                        ("Left",[GtkOld.Shift, GtkOld.Control],_) -> do
+                            calculateNewPosition backwardCharC >>= continueSelection True
+                            return True
+                        ("Right",[GtkOld.Control],_) -> do
+                            calculateNewPosition forwardCharC >>= continueSelection False --placeCursor buffer
+                            return True
+                        ("Right",[GtkOld.Shift, GtkOld.Control],_) -> do
+                            calculateNewPosition forwardCharC >>= continueSelection True
+                            return True
+                        ("BackSpace",[GtkOld.Control],_) -> do              -- delete word
+                            here <- getInsertIter buffer
+                            there <- calculateNewPosition backwardCharC
+                            delete buffer here there
+                            return True
+                        ("minus",[GtkOld.Control],_) -> do
+                            (start, end) <- getIdentifierUnderCursor buffer
+                            slice <- getSlice buffer start end True
+                            launchAutoCompleteDialog slice goToDefinition
+                            return True
+                        _ -> return False
+                ) ideR
+    return (Just buf,concat [ids1, ids2, ids3, ids4, ids5])
+
+
 --    makeActive actbuf = do
 --        ideR    <-  ask
 --        let sv = sourceView actbuf
@@ -1174,4 +1392,5 @@ editCandy = do
             (modeEditInCommentOrString (mode b))) buffers
         else mapM_ (modeEditFromCandy . mode) buffers
 
+--}
 --}
